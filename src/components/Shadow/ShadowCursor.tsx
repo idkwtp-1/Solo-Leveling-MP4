@@ -36,101 +36,42 @@ function drawRiftCore(
   isHovered: boolean,
 ) {
   ctx.save();
-  
-  // Gap height breathing
-  const baseGap = isHovered ? 8 : 2;
-  const breathing = Math.sin(time * 2.5) * 1.5;
-  const gap = Math.max(0.5, baseGap + breathing);
-  
-  const width = 20; // total horizontal width
-  const halfW = width / 2;
-  
-  // Zigzag generator
-  const segments = 4;
-  const topY: number[] = [];
-  const bottomY: number[] = [];
-  
-  for (let i = 0; i <= segments; i++) {
-    const seed1 = Math.sin(i * 12.3 + time * 15) * 4;
-    const seed2 = Math.cos(i * 7.9 - time * 18) * 4;
-    
-    topY.push(-gap / 2 + seed1);
-    bottomY.push(gap / 2 + seed2);
-  }
-  
   ctx.translate(cx, cy);
   
-  // 1. Draw void interior and fill it
+  // Gap height breathing
+  const baseRadius = isHovered ? 8 : 5;
+  const breathing = Math.sin(time * 3.0) * 1.2;
+  const radius = Math.max(3.0, baseRadius + breathing);
+  
+  // 1. Draw outer glowing blue ring
+  ctx.strokeStyle = "rgba(0, 210, 255, 0.85)";
+  ctx.lineWidth = 1.0;
+  ctx.shadowBlur = isHovered ? 12 : 5;
+  ctx.shadowColor = "rgba(0, 210, 255, 0.8)";
   ctx.beginPath();
-  ctx.moveTo(-halfW, 0);
-  for (let i = 0; i <= segments; i++) {
-    const x = -halfW + (i / segments) * width;
-    ctx.lineTo(x, topY[i]);
-  }
-  ctx.lineTo(halfW, 0);
-  for (let i = segments; i >= 0; i--) {
-    const x = -halfW + (i / segments) * width;
-    ctx.lineTo(x, bottomY[i]);
-  }
-  ctx.closePath();
+  ctx.arc(0, 0, radius + 2, 0, Math.PI * 2);
+  ctx.stroke();
   
-  // Deep void gradient fill
-  const voidGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, halfW);
+  // 2. Draw spinning dashed inner purple ring (portal runic markers)
+  ctx.strokeStyle = "rgba(138, 43, 226, 0.85)";
+  ctx.lineWidth = 1.2;
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = "rgba(138, 43, 226, 0.8)";
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, time * 2.2, time * 2.2 + Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // 3. Draw deep void core
+  const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius - 1);
   voidGrad.addColorStop(0, "rgba(0, 0, 0, 1)");
-  voidGrad.addColorStop(0.7, "rgba(75, 0, 130, 0.95)"); // Deep indigo
-  voidGrad.addColorStop(1, "rgba(0, 0, 0, 0.4)");
+  voidGrad.addColorStop(0.5, "rgba(15, 0, 30, 0.95)"); // Deep abyssal indigo
+  voidGrad.addColorStop(1, "rgba(0, 210, 255, 0.25)");
   ctx.fillStyle = voidGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
   ctx.fill();
-  
-  // Faint scanlines inside the gap
-  ctx.save();
-  ctx.clip();
-  ctx.strokeStyle = "rgba(0, 210, 255, 0.12)";
-  ctx.lineWidth = 0.5;
-  const scanlineY = (time * 15) % 8;
-  for (let sy = -halfW; sy < halfW; sy += 3) {
-    ctx.beginPath();
-    ctx.moveTo(-halfW, sy + scanlineY);
-    ctx.lineTo(halfW, sy + scanlineY);
-    ctx.stroke();
-  }
-  ctx.restore();
-  
-  // 2. Stroke the rift edges
-  const drawEdge = (lineWidth: number, color: string, blur: number) => {
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.shadowBlur = blur;
-    ctx.shadowColor = color;
-    ctx.lineJoin = "miter";
-    ctx.lineCap = "round";
-    
-    // Draw top stroke
-    ctx.beginPath();
-    ctx.moveTo(-halfW, 0);
-    for (let i = 0; i <= segments; i++) {
-      ctx.lineTo(-halfW + (i / segments) * width, topY[i]);
-    }
-    ctx.lineTo(halfW, 0);
-    ctx.stroke();
-    
-    // Draw bottom stroke
-    ctx.beginPath();
-    ctx.moveTo(halfW, 0);
-    for (let i = segments; i >= 0; i--) {
-      ctx.lineTo(-halfW + (i / segments) * width, bottomY[i]);
-    }
-    ctx.lineTo(-halfW, 0);
-    ctx.stroke();
-    
-    ctx.restore();
-  };
-  
-  // Outer edge: deep purple, 2.2px, strong glow
-  drawEdge(2.2, "rgba(138, 43, 226, 0.9)", 12);
-  // Inner edge: electric blue-white, 0.8px, intense glow
-  drawEdge(0.8, "rgba(200, 240, 255, 1.0)", 6);
   
   ctx.restore();
 }
@@ -143,6 +84,7 @@ function drawSoldierShape(
   opacity: number,
   hue: number,
   isSnapToAttention: boolean,
+  useShadow: boolean = false,
 ) {
   ctx.save();
   ctx.translate(x, y);
@@ -155,8 +97,11 @@ function drawSoldierShape(
   ctx.fillStyle = `rgba(10, 15, 12, ${opacity})`; // void black fill
   ctx.strokeStyle = `hsla(${hue}, 100%, 55%, ${opacity})`; // green outline
   ctx.lineWidth = 0.8;
-  ctx.shadowBlur = 4;
-  ctx.shadowColor = `hsla(${hue}, 100%, 50%, ${opacity})`;
+  
+  if (useShadow) {
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = `hsla(${hue}, 100%, 50%, ${opacity})`;
+  }
   
   // Head
   ctx.beginPath();
@@ -198,14 +143,14 @@ function drawFormationCore(
 ) {
   ctx.save();
   ctx.translate(cx, cy);
-  // Vanguard (tip)
-  drawSoldierShape(ctx, 0, -6, 4.5, 0.95, hue, isHovered);
+  // Vanguard (tip) - keep shadow glow for the core cursor vanguard
+  drawSoldierShape(ctx, 0, -6, 4.5, 0.95, hue, isHovered, true);
   // Flanks (mid)
-  drawSoldierShape(ctx, -5, 0, 4.0, 0.9, hue, isHovered);
-  drawSoldierShape(ctx, 5, 0, 4.0, 0.9, hue, isHovered);
+  drawSoldierShape(ctx, -5, 0, 4.0, 0.9, hue, isHovered, true);
+  drawSoldierShape(ctx, 5, 0, 4.0, 0.9, hue, isHovered, true);
   // Rear guard (base)
-  drawSoldierShape(ctx, -9, 6, 3.5, 0.8, hue, isHovered);
-  drawSoldierShape(ctx, 9, 6, 3.5, 0.8, hue, isHovered);
+  drawSoldierShape(ctx, -9, 6, 3.5, 0.8, hue, isHovered, true);
+  drawSoldierShape(ctx, 9, 6, 3.5, 0.8, hue, isHovered, true);
   ctx.restore();
 }
 
@@ -579,8 +524,10 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
 
       const cfg = getModeConfig(modeRef.current);
 
-      // Spawn wisps/soldier/fragments when moving
-      if (particles.length < 450) {
+      const maxParticles = modeRef.current === "gate" ? 120 : modeRef.current === "beru" ? 150 : 180;
+
+      // Spawn wisps/fragments/shards when moving
+      if (particles.length < maxParticles) {
         const spawnCount = 1 + Math.floor(speed / 12);
         for (let i = 0; i < spawnCount; i++) {
           const jitter = () => (Math.random() - 0.5) * 8;
@@ -590,24 +537,9 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
             pType = "shard";
           } else if (modeRef.current === "gate") {
             pType = "fragment";
-          } else if (modeRef.current === "beru") {
-            pType = "soldier";
           }
 
-          if (pType === "soldier") {
-            particles.push({
-              id: Math.random(),
-              type: "soldier",
-              x: mx + jitter(),
-              y: my + 8 + (Math.random() - 0.5) * 4, // spawn below Y + 8px
-              vx: (Math.random() - 0.5) * 0.3,
-              vy: -0.8 - Math.random() * 0.7, // rise up
-              life: 0,
-              maxLife: 50 + Math.random() * 25,
-              size: 3 + Math.random() * 2, // 3 to 5px tall
-              hue: cfg.hues[0], // green
-            });
-          } else if (pType === "fragment") {
+          if (pType === "fragment") {
             // Data fragments
             const side = Math.random() < 0.5 ? -10 : 10;
             const px = -dy / len;
@@ -646,7 +578,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
       }
 
       // Spawn high-velocity electric sparks when moving fast (only if NOT gate or beru modes)
-      if (speed > 5 && particles.length < 450 && modeRef.current !== "gate" && modeRef.current !== "beru") {
+      if (speed > 5 && particles.length < maxParticles && modeRef.current !== "gate" && modeRef.current !== "beru") {
         const sparkCount = Math.floor(speed / 6);
         for (let i = 0; i < sparkCount; i++) {
           const angle = Math.random() * Math.PI * 2;
@@ -725,25 +657,21 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           });
         }
 
-        // 3. A jagged rift line shoots outward in direction of last movement
-        const dx = mx - lastMx;
-        const dy = my - lastMy;
-        const speed = Math.hypot(dx, dy) || 1;
-        const ndx = dx / speed;
-        const ndy = dy / speed;
-        
-        particles.push({
-          id: Math.random(),
-          type: "riftLine",
-          x: mx,
-          y: my,
-          vx: ndx,
-          vy: ndy,
-          life: 0,
-          maxLife: 10,
-          size: 70 + Math.random() * 10, // length 60-80px
-          hue: cfg.hues[0], // blue
-        });
+        // 3. Mini dimensional shockwave rings expanding
+        for (let j = 0; j < 3; j++) {
+          particles.push({
+            id: Math.random(),
+            type: "shockwave",
+            x: mx,
+            y: my,
+            vx: 0,
+            vy: 0,
+            life: 0,
+            maxLife: 15 + j * 5,
+            size: 25 + j * 12,
+            hue: Math.random() < 0.5 ? cfg.hues[0] : cfg.hues[1],
+          });
+        }
 
         // 4. Text spawn
         const text = cfg.text[Math.floor(Math.random() * cfg.text.length)];
@@ -1168,26 +1096,14 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.fillRect(-w / 2, -h / 2, w, h);
           ctx.restore();
         } else if (p.type === "ghost") {
-          // Cyan glitch afterimage duplicate
+          // Cyan glitch afterimage circular ring duplicate
           ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.scale(p.size, p.size);
-          
-          const baseGap = 4;
-          const halfW = 10;
-          ctx.strokeStyle = `rgba(0, 255, 255, ${t * 0.45})`;
+          ctx.strokeStyle = `rgba(0, 255, 255, ${t * 0.35})`;
           ctx.lineWidth = 1.0;
-          
+          ctx.shadowBlur = 4;
+          ctx.shadowColor = "rgba(0, 255, 255, 0.5)";
           ctx.beginPath();
-          ctx.moveTo(-halfW, 0);
-          ctx.lineTo(-halfW / 2, -baseGap / 2 - 2);
-          ctx.lineTo(0, -baseGap / 2 + 1);
-          ctx.lineTo(halfW / 2, -baseGap / 2 - 2);
-          ctx.lineTo(halfW, 0);
-          ctx.lineTo(halfW / 2, baseGap / 2 + 2);
-          ctx.lineTo(0, baseGap / 2 - 1);
-          ctx.lineTo(-halfW / 2, baseGap / 2 + 2);
-          ctx.closePath();
+          ctx.arc(p.x, p.y, p.size * 6 * (2 - t), 0, Math.PI * 2); // expanding ring
           ctx.stroke();
           ctx.restore();
         } else if (p.type === "soldier") {
@@ -1226,37 +1142,6 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.beginPath();
           ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
           ctx.fill();
-          ctx.restore();
-        } else if (p.type === "riftLine") {
-          ctx.save();
-          ctx.strokeStyle = `rgba(200, 240, 255, ${t * 0.95})`;
-          ctx.lineWidth = 1.5 * t;
-          
-          const length = p.size;
-          const endX = p.x + p.vx * length;
-          const endY = p.y + p.vy * length;
-          
-          const dist = length;
-          const steps = 8;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          let cx = p.x;
-          let cy = p.y;
-          
-          const px = -p.vy;
-          const py = p.vx;
-          
-          for (let j = 1; j < steps; j++) {
-            const ratio = j / steps;
-            const tx = p.x + p.vx * dist * ratio;
-            const ty = p.y + p.vy * dist * ratio;
-            const offset = (Math.random() - 0.5) * 8 * t;
-            cx = tx + px * offset;
-            cy = ty + py * offset;
-            ctx.lineTo(cx, cy);
-          }
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
           ctx.restore();
         } else if (p.type === "shard") {
           p.vy += 0.06;

@@ -35,3 +35,8 @@ dist-ssr
 backend/yt-dlp.exe
 backend/media/*.mp3
 backend/media/*.m4a
+
+# Git History Simulation Tools
+simulate_history.cjs
+simulate_state.json
+

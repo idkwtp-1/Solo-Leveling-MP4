@@ -1,0 +1,143 @@
+[3. Dead functions and classes] File: src\routeTree.gen.ts | Line(s): ?
+Issue: Exported entity 'FileRoutesByFullPath' is never imported or referenced in other files.
+Risk if removed: Medium (needs review — dynamic reference possible)
+
+[3. Dead functions and classes] File: src\routeTree.gen.ts | Line(s): ?
+Issue: Exported entity 'FileRoutesByTo' is never imported or referenced in other files.
+Risk if removed: Medium (needs review — dynamic reference possible)
+
+[3. Dead functions and classes] File: src\routeTree.gen.ts | Line(s): ?
+Issue: Exported entity 'FileRoutesById' is never imported or referenced in other files.
+Risk if removed: Medium (needs review — dynamic reference possible)
+
+[3. Dead functions and classes] File: src\routeTree.gen.ts | Line(s): ?
+Issue: Exported entity 'FileRouteTypes' is never imported or referenced in other files.
+Risk if removed: Medium (needs review — dynamic reference possible)
+
+[3. Dead functions and classes] File: src\routeTree.gen.ts | Line(s): ?
+Issue: Exported entity 'RootRouteChildren' is never imported or referenced in other files.
+Risk if removed: Medium (needs review — dynamic reference possible)
+
+[1. Unused imports] File: src\components\Shadow\GatesGrid.tsx | Line(s): 1
+Issue: Import 'type Gate' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\HexButton.tsx | Line(s): 1
+Issue: Import 'type ButtonHTMLAttributes' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\HexButton.tsx | Line(s): 1
+Issue: Import 'type ReactNode' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\MobileQueueDrawer.tsx | Line(s): 8
+Issue: Import 'type Gate' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\MobileQueueDrawer.tsx | Line(s): 8
+Issue: Import 'type Track' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\MonarchPlayer.tsx | Line(s): 3
+Issue: Import 'type Track' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\SidebarQueue.tsx | Line(s): 1
+Issue: Import 'type Gate' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\SidebarQueue.tsx | Line(s): 1
+Issue: Import 'type Track' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\StatusWindow.tsx | Line(s): 3
+Issue: Import 'type Track' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\TrackList.tsx | Line(s): 1
+Issue: Import 'type Gate' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\Shadow\TrackList.tsx | Line(s): 1
+Issue: Import 'type Track' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\alert.tsx | Line(s): 2
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\badge.tsx | Line(s): 2
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\button.tsx | Line(s): 3
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\command.tsx | Line(s): 4
+Issue: Import 'type DialogProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\form.tsx | Line(s): 8
+Issue: Import 'type ControllerProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\form.tsx | Line(s): 9
+Issue: Import 'type FieldPath' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\form.tsx | Line(s): 10
+Issue: Import 'type FieldValues' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\label.tsx | Line(s): 5
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\sheet.tsx | Line(s): 5
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\sidebar.tsx | Line(s): 3
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\toggle-group.tsx | Line(s): 5
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\components\UI\toggle.tsx | Line(s): 3
+Issue: Import 'type VariantProps' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\lib\utils.ts | Line(s): 1
+Issue: Import 'type ClassValue' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\routes\index.tsx | Line(s): 5
+Issue: Import 'type Gate' is never referenced in this file.
+Risk if removed: Low
+
+[1. Unused imports] File: src\routes\index.tsx | Line(s): 5
+Issue: Import 'type Track' is never referenced in this file.
+Risk if removed: Low
+
+[6. Leftover artifacts] File: src\routes\index.tsx | Line(s): 340
+Issue: console.log statement found.
+Risk if removed: Low
+
+[6. Leftover artifacts] File: src\routes\index.tsx | Line(s): 653
+Issue: Empty catch block with no error handling.
+Risk if removed: Low
+
+[6. Leftover artifacts] File: backend\server.js | Line(s): 103
+Issue: console.log statement found.
+Risk if removed: Low
+
+[6. Leftover artifacts] File: backend\server.js | Line(s): 135
+Issue: console.log statement found.
+Risk if removed: Low
+
+[6. Leftover artifacts] File: backend\server.js | Line(s): 175
+Issue: console.log statement found.
+Risk if removed: Low

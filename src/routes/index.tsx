@@ -13,6 +13,7 @@ import { GatesGrid } from "@/components/Shadow/GatesGrid";
 import { TrackList } from "@/components/Shadow/TrackList";
 import { StatusWindow } from "@/components/Shadow/StatusWindow";
 import { MonarchPlayer } from "@/components/Shadow/MonarchPlayer";
+import { MiniPlayerView } from "@/components/Shadow/MiniPlayerView";
 import { SidebarQueue } from "@/components/Shadow/SidebarQueue";
 import { MobileQueueDrawer } from "@/components/Shadow/MobileQueueDrawer";
 import { ShadowCursor } from "@/components/Shadow/ShadowCursor";
@@ -50,11 +51,11 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 const DEFAULT_ASSIGNMENTS: Record<string, string> = {
+  "tiki-tiki-slowed": "boss",
+  "veki-veki-slowed": "boss",
+  "worry-slowed": "boss",
+  "babydoll-perfect-girl": "boss",
   "one-of-the-girls-mashup": "boss",
-  "babydoll-perfect-girl": "hype",
-  "tiki-tiki-slowed": "chill",
-  "veki-veki-slowed": "monarch",
-  "worry-slowed": "dungeon",
 };
 
 const fetchGates = async (): Promise<Gate[]> => {
@@ -84,6 +85,11 @@ const fetchTracks = async (): Promise<Track[]> => {
 };
 
 function ShadowPlayerPage() {
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const isMobile = useIsMobile();
   const [isOffline, setIsOffline] = useState(false);
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
@@ -110,6 +116,16 @@ function ShadowPlayerPage() {
     initialData: {},
   });
 
+  const { data: assignmentsData, refetch: refetchAssignments } = useQuery<Record<string, string>>({
+    queryKey: ["assignments"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/assignments`);
+      if (!res.ok) throw new Error("Failed to fetch assignments");
+      return res.json();
+    },
+    initialData: {},
+  });
+
   // Load track assignments from localStorage on mount
   const [assignments, setAssignments] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
@@ -131,21 +147,47 @@ function ShadowPlayerPage() {
     }
   });
 
-  const handleAssignTrack = (trackId: string, gateId: string) => {
+  useEffect(() => {
+    if (assignmentsData && Object.keys(assignmentsData).length > 0) {
+      setAssignments(assignmentsData);
+    }
+  }, [assignmentsData]);
+
+  const handleAssignTrack = async (trackId: string, gateId: string) => {
     setAssignments((prev) => {
       const next = { ...prev, [trackId]: gateId };
       localStorage.setItem("slplayer-track-assignments", JSON.stringify(next));
       return next;
     });
+    try {
+      await fetch(`${API_BASE}/api/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId, gateId }),
+      });
+      refetchAssignments();
+    } catch (e) {
+      console.warn("Failed to sync track assignment to server:", e);
+    }
   };
 
-  const handleUnassignTrack = (trackId: string) => {
+  const handleUnassignTrack = async (trackId: string) => {
     setAssignments((prev) => {
       const next = { ...prev };
       delete next[trackId];
       localStorage.setItem("slplayer-track-assignments", JSON.stringify(next));
       return next;
     });
+    try {
+      await fetch(`${API_BASE}/api/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId, gateId: null }),
+      });
+      refetchAssignments();
+    } catch (e) {
+      console.warn("Failed to sync track unassignment to server:", e);
+    }
   };
 
   const baseGates = gatesData || GATES;
@@ -574,9 +616,27 @@ function ShadowPlayerPage() {
   }, [playing, pipActive]);
 
   const togglePip = async () => {
+    const nextState = !pipActive;
+
+    // Check if pywebview is available (running inside desktop app)
+    const pywebview = (window as any).pywebview;
+    if (pywebview && pywebview.api && pywebview.api.toggle_mini_mode) {
+      setPipActive(nextState);
+      try {
+        await pywebview.api.toggle_mini_mode(nextState);
+      } catch (err) {
+        console.error("Failed to toggle pywebview mini mode:", err);
+      }
+      return;
+    }
+
+    // Fallback to browser picture-in-picture
     const video = pipVideoRef.current;
     const canvas = pipCanvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas) {
+      setPipActive(nextState);
+      return;
+    }
 
     try {
       if (document.pictureInPictureElement) {
@@ -593,7 +653,8 @@ function ShadowPlayerPage() {
       }
     } catch (err) {
       console.error("Failed to toggle Picture-in-Picture:", err);
-      toast.error("SYSTEM ERROR: Failed to launch PiP window");
+      setPipActive(nextState);
+      toast.error("SYSTEM ALERT: Native PiP failed, switching to local mini mode");
     }
   };
 
@@ -1129,53 +1190,8 @@ function ShadowPlayerPage() {
       gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id))?.name ||
       activeGate.name
     );
-  }, [activeTrack, gates, activeGate, globalShuffleActive]);
-
-  return (
+  }, [activeTrack, gates, activeGate, globalShuffleActive]);  return (
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
-      {/* Background image layer */}
-      <div
-        aria-hidden
-        className="fixed inset-0 z-0 bg-center bg-cover"
-        style={{ backgroundImage: `url(${bgImage})` }}
-      />
-      {/* Reactive background canvas */}
-      <AnimatedBackground
-        intensity={bgIntensity}
-        audioRef={audioRef}
-        beatDrops={
-          activeTrack && beatDropsData
-            ? beatDropsData[activeTrack.id]
-            : undefined
-        }
-      />
-      {/* Radial gradient mask (exact spec) */}
-      <div
-        aria-hidden
-        className="fixed inset-0 z-[2] pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(11,14,20,0.6) 0%, rgba(11,14,20,0.97) 100%)",
-        }}
-      />
-      {/* subtle grid lines */}
-      <div
-        aria-hidden
-        className="fixed inset-0 z-[3] pointer-events-none opacity-[0.08]"
-        style={{
-          backgroundImage:
-            "linear-gradient(oklch(0.82 0.16 220) 1px, transparent 1px), linear-gradient(90deg, oklch(0.82 0.16 220) 1px, transparent 1px)",
-          backgroundSize: "80px 80px",
-        }}
-      />
-
-      {/* Connectivity Banner for Offline Mode */}
-      {isOffline && (
-        <div className="relative z-50 bg-red-950/70 border-b border-red-500/35 px-4 py-1 text-center font-mono text-[10px] text-red-400 tracking-[0.25em] backdrop-blur-sm animate-pulse">
-          SYSTEM ERROR: OFFLINE MODE ACTIVE // LOCAL CACHE ONLY
-        </div>
-      )}
-
       {/* HTML5 Audio Stream Instance */}
       <audio
         ref={audioRef}
@@ -1197,169 +1213,260 @@ function ShadowPlayerPage() {
         }}
       />
 
-      <main className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
-        <SystemHeader onOpenSettings={() => setIsSettingsOpen(true)} />
+      {pipActive ? (
+        <MiniPlayerView
+          track={activeTrack}
+          playing={playing}
+          currentTime={currentTime}
+          duration={duration}
+          shuffle={globalShuffleActive || shuffle}
+          repeatMode={repeatMode}
+          onToggle={handleToggle}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onSeek={handleSeek}
+          onRestore={togglePip}
+          onToggleShuffle={() => {
+            if (globalShuffleActive) {
+              setGlobalShuffleActive(false);
+            } else {
+              setShuffle(!shuffle);
+            }
+          }}
+          onToggleRepeat={() =>
+            setRepeatMode((prev) =>
+              prev === "none" ? "all" : prev === "all" ? "one" : "none",
+            )
+          }
+          gates={gates}
+          activeGate={activeGate}
+        />
+      ) : (
+        <>
+          {/* Background image layer */}
+          <div
+            aria-hidden
+            className="fixed inset-0 z-0 bg-center bg-cover"
+            style={{ backgroundImage: `url(${bgImage})` }}
+          />
+          {/* Reactive background canvas */}
+          <AnimatedBackground
+            intensity={bgIntensity}
+            audioRef={audioRef}
+            beatDrops={
+              activeTrack && beatDropsData
+                ? beatDropsData[activeTrack.id]
+                : undefined
+            }
+          />
+          {/* Radial gradient mask (exact spec) */}
+          <div
+            aria-hidden
+            className="fixed inset-0 z-[2] pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(11,14,20,0.6) 0%, rgba(11,14,20,0.97) 100%)",
+            }}
+          />
+          {/* subtle grid lines */}
+          <div
+            aria-hidden
+            className="fixed inset-0 z-[3] pointer-events-none opacity-[0.08]"
+            style={{
+              backgroundImage:
+                "linear-gradient(oklch(0.82 0.16 220) 1px, transparent 1px), linear-gradient(90deg, oklch(0.82 0.16 220) 1px, transparent 1px)",
+              backgroundSize: "80px 80px",
+            }}
+          />
 
-        <LayoutGroup>
-          {!systemActive ? (
-            <motion.div
-              key="state-a"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.35 }}
-              className="mt-8 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:gap-8"
-            >
-              <div className="space-y-10 min-w-0">
-                <GatesGrid
-                  gates={gates}
-                  activeId={activeGateId}
-                  onSelect={handleSelectGate}
-                  isOffline={isOffline}
-                  cachedTrackIds={cachedTrackIds}
-                  globalShuffleActive={globalShuffleActive}
-                  onGlobalShuffle={handleGlobalShuffle}
-                />
-                <AnimatePresence mode="wait">
-                  {activeGateId && (
+          {/* Connectivity Banner for Offline Mode */}
+          {isOffline && (
+            <div className="relative z-50 bg-red-950/70 border-b border-red-500/35 px-4 py-1 text-center font-mono text-[10px] text-red-400 tracking-[0.25em] backdrop-blur-sm animate-pulse">
+              SYSTEM ERROR: OFFLINE MODE ACTIVE // LOCAL CACHE ONLY
+            </div>
+          )}
+
+          <main className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10 py-6 sm:py-8 flex flex-col min-h-screen">
+            {!hasMounted ? (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] font-mono text-xs text-primary gap-4">
+                <span className="h-8 w-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <div className="flex flex-col items-center gap-1.5 mt-2">
+                  <span className="tracking-[0.3em] uppercase text-primary font-semibold animate-pulse">
+                    [SYSTEM INITIALIZING]
+                  </span>
+                  <span className="tracking-[0.15em] text-[10px] text-muted-foreground uppercase text-center max-w-xs leading-relaxed">
+                    Loading gate conflict arrays & database...
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <SystemHeader onOpenSettings={() => setIsSettingsOpen(true)} />
+
+                <LayoutGroup>
+                  {!systemActive ? (
                     <motion.div
-                      key={activeGateId}
-                      initial={{ opacity: 0, y: 8 }}
+                      key="state-a"
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.25 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className="mt-8 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:gap-8"
                     >
-                      <TrackList
-                        gate={activeGate}
-                        activeId={activeTrack?.id ?? null}
-                        onPlay={handlePlay}
-                        isOffline={isOffline}
-                        cachedTrackIds={cachedTrackIds}
-                        onReassign={handleAssignTrack}
-                        onUnassign={handleUnassignTrack}
-                        gates={gates}
-                        onClose={() => setActiveGateId(null)}
-                      />
+                      <div className="space-y-10 min-w-0">
+                        <GatesGrid
+                          gates={gates}
+                          activeId={activeGateId}
+                          onSelect={handleSelectGate}
+                          isOffline={isOffline}
+                          cachedTrackIds={cachedTrackIds}
+                          globalShuffleActive={globalShuffleActive}
+                          onGlobalShuffle={handleGlobalShuffle}
+                        />
+                        <AnimatePresence mode="wait">
+                          {activeGateId && (
+                            <motion.div
+                              key={activeGateId}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -8 }}
+                              transition={{ duration: 0.25 }}
+                            >
+                              <TrackList
+                                gate={activeGate}
+                                activeId={activeTrack?.id ?? null}
+                                onPlay={handlePlay}
+                                isOffline={isOffline}
+                                cachedTrackIds={cachedTrackIds}
+                                onReassign={handleAssignTrack}
+                                onUnassign={handleUnassignTrack}
+                                gates={gates}
+                                onClose={() => setActiveGateId(null)}
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <div className="lg:sticky lg:top-8 self-start space-y-6">
+                        <StatusWindow
+                          track={activeTrack}
+                          playing={playing}
+                          onToggle={handleToggle}
+                          onPrev={handlePrev}
+                          onNext={handleNext}
+                          currentTime={currentTime}
+                          duration={duration}
+                          onExpand={() => setIsPlayerOpen(true)}
+                          onSeek={handleSeek}
+                        />
+                        <AnimatePresence>
+                          {unassignedTracks.length > 0 && (
+                            <UnassignedPanel
+                              tracks={unassignedTracks}
+                              gates={gates}
+                              onAssign={handleAssignTrack}
+                            />
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="state-b"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="mt-8 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8 lg:min-h-[calc(100vh-160px)]"
+                    >
+                      <div className="flex items-center justify-center py-4">
+                        <MonarchPlayer
+                          track={activeTrack!}
+                          gateName={playingGateName}
+                          playing={playing}
+                          onToggle={handleToggle}
+                          onPrev={handlePrev}
+                          onNext={handleNext}
+                          onClose={handleClose}
+                          currentTime={currentTime}
+                          duration={duration}
+                          onSeek={handleSeek}
+                          shuffle={globalShuffleActive || shuffle}
+                          onToggleShuffle={() => {
+                            if (globalShuffleActive) {
+                              setGlobalShuffleActive(false);
+                              toast.success("SYSTEM SHUFFLE: Returned to gate queue");
+                            } else {
+                              setShuffle(!shuffle);
+                            }
+                          }}
+                          repeatMode={repeatMode}
+                          onToggleRepeat={() =>
+                            setRepeatMode((prev) =>
+                              prev === "none" ? "all" : prev === "all" ? "one" : "none",
+                            )
+                          }
+                          pipActive={pipActive}
+                          onTogglePip={togglePip}
+                        />
+                      </div>
+                      {/* Desktop queue */}
+                      <div className="hidden lg:block max-h-[calc(100vh-160px)]">
+                        <SidebarQueue
+                          gate={activeGate}
+                          gates={gates}
+                          activeId={activeTrack?.id ?? null}
+                          onPlay={handlePlay}
+                          onPickGate={handleSelectGate}
+                          isOffline={isOffline}
+                          cachedTrackIds={cachedTrackIds}
+                        />
+                      </div>
+                      {/* Mobile drawer trigger */}
+                      <div className="lg:hidden flex justify-center pb-8">
+                        <MobileQueueDrawer
+                          gate={activeGate}
+                          activeId={activeTrack?.id ?? null}
+                          onPlay={handlePlay}
+                          isOffline={isOffline}
+                          cachedTrackIds={cachedTrackIds}
+                        />
+                      </div>
                     </motion.div>
                   )}
-                </AnimatePresence>
-              </div>
-              <div className="lg:sticky lg:top-8 self-start space-y-6">
-                <StatusWindow
-                  track={activeTrack}
-                  playing={playing}
-                  onToggle={handleToggle}
-                  onPrev={handlePrev}
-                  onNext={handleNext}
-                  currentTime={currentTime}
-                  duration={duration}
-                  onExpand={() => setIsPlayerOpen(true)}
-                  onSeek={handleSeek}
-                />
-                <AnimatePresence>
-                  {unassignedTracks.length > 0 && (
-                    <UnassignedPanel
-                      tracks={unassignedTracks}
-                      gates={gates}
-                      onAssign={handleAssignTrack}
-                    />
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="state-b"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
-              className="mt-8 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8 lg:min-h-[calc(100vh-160px)]"
-            >
-              <div className="flex items-center justify-center py-4">
-                <MonarchPlayer
-                  track={activeTrack!}
-                  gateName={playingGateName}
-                  playing={playing}
-                  onToggle={handleToggle}
-                  onPrev={handlePrev}
-                  onNext={handleNext}
-                  onClose={handleClose}
-                  currentTime={currentTime}
-                  duration={duration}
-                  onSeek={handleSeek}
-                  shuffle={globalShuffleActive || shuffle}
-                  onToggleShuffle={() => {
-                    if (globalShuffleActive) {
-                      setGlobalShuffleActive(false);
-                      toast.success("SYSTEM SHUFFLE: Returned to gate queue");
-                    } else {
-                      setShuffle(!shuffle);
-                    }
-                  }}
-                  repeatMode={repeatMode}
-                  onToggleRepeat={() =>
-                    setRepeatMode((prev) =>
-                      prev === "none" ? "all" : prev === "all" ? "one" : "none",
-                    )
-                  }
-                  pipActive={pipActive}
-                  onTogglePip={togglePip}
-                />
-              </div>
-              {/* Desktop queue */}
-              <div className="hidden lg:block max-h-[calc(100vh-160px)]">
-                <SidebarQueue
-                  gate={activeGate}
-                  gates={gates}
-                  activeId={activeTrack?.id ?? null}
-                  onPlay={handlePlay}
-                  onPickGate={handleSelectGate}
-                  isOffline={isOffline}
-                  cachedTrackIds={cachedTrackIds}
-                />
-              </div>
-              {/* Mobile drawer trigger */}
-              <div className="lg:hidden flex justify-center pb-8">
-                <MobileQueueDrawer
-                  gate={activeGate}
-                  activeId={activeTrack?.id ?? null}
-                  onPlay={handlePlay}
-                  isOffline={isOffline}
-                  cachedTrackIds={cachedTrackIds}
-                />
-              </div>
-            </motion.div>
-          )}
-        </LayoutGroup>
+                </LayoutGroup>
+              </>
+            )}
 
-        <footer className="mt-12 pt-6 border-t border-border flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-          <span>© SHADOW PLAYER SYSTEM // SLPlayer Project</span>
-          <span className="text-primary">v1.0.0 // BUILD-SHDW-241B</span>
-        </footer>
-      </main>
+            <footer className="mt-auto pt-6 border-t border-border flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+              <span>© SHADOW PLAYER SYSTEM</span>
+              <span className="text-primary">v1.0.0</span>
+            </footer>
+          </main>
 
-      {!isMobile && <ShadowCursor mode={cursorMode} />}
+          {hasMounted && !isMobile && <ShadowCursor mode={cursorMode} />}
 
-      <SettingsDrawer
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        cursorMode={cursorMode}
-        setCursorMode={setCursorMode}
-        bgIntensity={bgIntensity}
-        setBgIntensity={setBgIntensity}
-        dspEnabled={dspEnabled}
-        setDspEnabled={setDspEnabled}
-        bassGain={bassGain}
-        setBassGain={setBassGain}
-        midGain={midGain}
-        setMidGain={setMidGain}
-        trebleGain={trebleGain}
-        setTrebleGain={setTrebleGain}
-        reverbEnabled={reverbEnabled}
-        setReverbEnabled={setReverbEnabled}
-        normalizationEnabled={normalizationEnabled}
-        setNormalizationEnabled={setNormalizationEnabled}
-      />
+          <SettingsDrawer
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            cursorMode={cursorMode}
+            setCursorMode={setCursorMode}
+            bgIntensity={bgIntensity}
+            setBgIntensity={setBgIntensity}
+            dspEnabled={dspEnabled}
+            setDspEnabled={setDspEnabled}
+            bassGain={bassGain}
+            setBassGain={setBassGain}
+            midGain={midGain}
+            setMidGain={setMidGain}
+            trebleGain={trebleGain}
+            setTrebleGain={setTrebleGain}
+            reverbEnabled={reverbEnabled}
+            setReverbEnabled={setReverbEnabled}
+            normalizationEnabled={normalizationEnabled}
+            setNormalizationEnabled={setNormalizationEnabled}
+          />
+        </>
+      )}
 
       {/* Hidden Canvas & Video for Picture-in-Picture Mini-Player */}
       <canvas
