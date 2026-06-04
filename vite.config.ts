@@ -13,6 +13,7 @@ export default defineConfig({
     spa: { enabled: true },
   },
   vite: {
+    base: process.env.NODE_ENV === "production" ? "/Solo-Leveling-MP4/" : "/",
     server: {
       port: 8081,
       strictPort: true,
