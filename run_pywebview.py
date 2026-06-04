@@ -128,7 +128,6 @@ def main():
             min_size=(800, 600),
             fullscreen=True,
             frameless=True,
-            easy_drag=True,
             background_color='#0b0e14',
             js_api=api
         )

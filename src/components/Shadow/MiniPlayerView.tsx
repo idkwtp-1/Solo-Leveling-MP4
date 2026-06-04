@@ -126,7 +126,7 @@ export function MiniPlayerView({
       {/* ══════════════════════════════════════════════════
           ZONE 1 — Header  (identical to MonarchPlayer top row)
       ══════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex items-center justify-between px-3 pt-2 shrink-0">
+      <div className="relative z-10 flex items-center justify-between px-3 pt-2 shrink-0 pywebview-drag-region select-none">
         <span className="font-mono text-[9px] text-primary tracking-[0.3em]">
           SYSTEM ACTIVE // NOW PLAYING
         </span>

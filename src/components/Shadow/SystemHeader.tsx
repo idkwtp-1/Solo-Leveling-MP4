@@ -16,7 +16,7 @@ export function SystemHeader({ onOpenSettings }: Props) {
   const ss = String(time.getSeconds()).padStart(2, "0");
 
   return (
-    <header className="flex items-center justify-between gap-4 pb-6 border-b border-border">
+    <header className="flex items-center justify-between gap-4 pb-6 border-b border-border pywebview-drag-region select-none">
       <div className="flex items-center gap-3">
         <span className="relative inline-flex">
           <span className="absolute inset-0 rounded-full bg-primary blur-md opacity-80" />
