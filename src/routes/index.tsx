@@ -22,6 +22,7 @@ import bgImage from "@/assets/shadow-bg.jpg";
 import { AnimatedBackground } from "@/components/Shadow/AnimatedBackground";
 import { SettingsDrawer } from "@/components/Shadow/SettingsDrawer";
 import { toast } from "sonner";
+import { ExitConfirmDialog } from "@/components/Shadow/ExitConfirmDialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -107,8 +108,26 @@ const fetchTracks = async (): Promise<Track[]> => {
 
 function ShadowPlayerPage() {
   const [hasMounted, setHasMounted] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+
   useEffect(() => {
     setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowExitDialog((prev) => {
+          if (!prev) {
+            e.preventDefault();
+            return true;
+          }
+          return prev;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const isMobile = useIsMobile();
@@ -1229,8 +1248,16 @@ function ShadowPlayerPage() {
               : `${API_BASE}/api/stream/${encodeURIComponent(activeTrack.id)}`
             : undefined
         }
-        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-        onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
+        onTimeUpdate={(e) => {
+          const time = e.currentTarget.currentTime;
+          setCurrentTime(time);
+          if (activeTrack?.endTime && time >= activeTrack.endTime) {
+            handleNext(true);
+          }
+        }}
+        onDurationChange={(e) => {
+          setDuration(activeTrack?.endTime || e.currentTarget.duration || 0);
+        }}
         onEnded={() => handleNext(true)}
         onError={(e) => {
           if (activeTrack) {
@@ -1516,6 +1543,11 @@ function ShadowPlayerPage() {
           top: "-9999px",
           left: "-9999px",
         }}
+      />
+
+      <ExitConfirmDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
       />
     </div>
   );

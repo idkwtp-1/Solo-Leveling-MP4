@@ -85,6 +85,8 @@ function loadInventory() {
           newInventory[track.id] = {
             filename: track.filename,
             title: track.title,
+            duration: track.duration,
+            endTime: track.endTime,
           };
         });
         TRACK_INVENTORY = newInventory;
@@ -311,6 +313,20 @@ app.get("/api/stream/:trackId", (req, res) => {
     res.writeHead(200, head);
     fs.createReadStream(filePath).pipe(res);
   }
+});
+
+// Serve media folder statically (supporting both relative/local and base-url prefixed requests)
+app.use("/Solo-Leveling-MP4/media", express.static(path.join(__dirname, "media")));
+app.use("/media", express.static(path.join(__dirname, "media")));
+
+// Serve static assets from frontend build folder (supporting both / and base-url prefixed requests)
+const clientPath = path.join(__dirname, "../dist/client");
+app.use("/Solo-Leveling-MP4", express.static(clientPath));
+app.use(express.static(clientPath));
+
+// Catch-all route to serve the React app (index.html)
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(clientPath, "index.html"));
 });
 
 // Start the server

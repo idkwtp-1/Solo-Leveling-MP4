@@ -3,43 +3,45 @@
     "id": "tiki-tiki-slowed",
     "filename": "tiki_tiki_slowed.m4a",
     "title": "TIKI TIKI (Slowed)",
-    "duration": "3:42"
+    "duration": "2:01"
   },
   {
     "id": "veki-veki-slowed",
     "filename": "veki_veki_ultra_slowed.m4a",
     "title": "VEKI VEKI (Ultra Slowed)",
-    "duration": "4:05"
+    "duration": "1:55"
   },
   {
     "id": "worry-slowed",
     "filename": "worry_ultra_slowed.m4a",
     "title": "worry (ultra slowed)",
-    "duration": "3:18"
+    "duration": "4:15"
   },
   {
     "id": "babydoll-perfect-girl",
     "filename": "babydoll_the_perfect_girl.m4a",
     "title": "Babydoll X The Perfect Girl (Full Version)",
-    "duration": "3:50"
+    "duration": "2:14"
   },
   {
     "id": "one-of-the-girls-mashup",
     "filename": "one_of_the_girls_good_for_you.m4a",
     "title": "One Of The Girls X Good For You (Mashup)",
-    "duration": "4:15"
+    "duration": "4:05"
   },
   {
     "id": "dress-over-slowed-reverb",
     "filename": "DRESS_Over_Slowed_+_Reverb.m4a",
     "title": "DRESS! (Over Slowed + Reverb)",
-    "duration": "2:05"
+    "duration": "2:00",
+    "endTime": 120
   },
   {
     "id": "eternxlkz-slay-official-audio",
     "filename": "Eternxlkz_-_SLAY_Official_Audio.m4a",
     "title": "Eternxlkz - SLAY! (Official Audio)",
-    "duration": "1:47"
+    "duration": "1:42",
+    "endTime": 102
   },
   {
     "id": "lxngvx-bruxo-fantasma-super-slowed",
@@ -51,13 +53,14 @@
     "id": "wutiwant-slowed",
     "filename": "wutiwant_Slowed.m4a",
     "title": "wutiwant (Slowed)",
-    "duration": "2:46"
+    "duration": "2:45"
   },
   {
     "id": "bloody-ultra-slowed",
     "filename": "BLOODY_ULTRA_SLOWED.m4a",
     "title": "BLOODY! (ULTRA SLOWED)",
-    "duration": "2:19"
+    "duration": "2:12",
+    "endTime": 132
   },
   {
     "id": "ogryzek-glory-super-slowed-reverb-official-visualiser",
@@ -69,7 +72,7 @@
     "id": "automotivo-pa-pa-papai-slowed-dj-rio",
     "filename": "AUTOMOTIVO_PA_PA_PAPAI_Slowed_-_DJ_RIO.m4a",
     "title": "AUTOMOTIVO PA PA PAPAI (Slowed) - DJ RIO",
-    "duration": "1:11"
+    "duration": "1:10"
   },
   {
     "id": "montagem-fim-estrelar-super-slowed",
@@ -81,13 +84,13 @@
     "id": "nxght-scythermane-nunca-muda-brazilian-phonk",
     "filename": "NXGHT_Scythermane_-_NUNCA_MUDA_brazilian_phonk.m4a",
     "title": "NXGHT, Scythermane - NUNCA MUDA? ( )",
-    "duration": "1:22"
+    "duration": "1:21"
   },
   {
     "id": "automotivo-catucada-1-0-super-slowed",
     "filename": "Automotivo_Catucada_1.0_Super_Slowed.m4a",
     "title": "Automotivo Catucada 1.0 (Super Slowed)",
-    "duration": "1:47"
+    "duration": "1:46"
   },
   {
     "id": "montagem-diamante-rosa-slowed",
@@ -111,7 +114,7 @@
     "id": "yugoslavskiy-groove-slowed-reverb",
     "filename": "Yugoslavskiy_Groove_Slowed_+_Reverb.m4a",
     "title": "Yugoslavskiy Groove (Slowed + Reverb)",
-    "duration": "1:08"
+    "duration": "1:07"
   },
   {
     "id": "atlxs-passo-bem-solto-slowed",
@@ -135,31 +138,32 @@
     "id": "acido-slowed",
     "filename": "ACIDO_Slowed.m4a",
     "title": "ACIDO (Slowed)",
-    "duration": "1:26"
+    "duration": "1:25"
   },
   {
     "id": "espaco-liminal-slowed",
     "filename": "ESPACO_LIMINAL_SLOWED.m4a",
     "title": "ESPACO LIMINAL SLOWED",
-    "duration": "2:09"
+    "duration": "2:08"
   },
   {
     "id": "slxughter-fragment-slowed",
     "filename": "slxughter_-_fragment_slowed.m4a",
     "title": "slxughter - fragment (slowed)",
-    "duration": "1:43"
+    "duration": "1:37",
+    "endTime": 97
   },
   {
     "id": "esse-cara-super-slowed",
     "filename": "ESSE_CARA_Super_Slowed.m4a",
     "title": "ESSE CARA! (Super Slowed)",
-    "duration": "1:21"
+    "duration": "1:20"
   },
   {
     "id": "ariis-yb-wasg-ood-luna-bala-ultra-slowed",
     "filename": "Ariis_Yb_Wasg_ood_-_LUNA_BALA_Ultra_Slowed.m4a",
     "title": "Ariis, Yb Wasg'ood - LUNA BALA (Ultra Slowed)",
-    "duration": "2:19"
+    "duration": "2:18"
   },
   {
     "id": "funk-mi-camino",
@@ -171,25 +175,25 @@
     "id": "deprezz-i-ll-do-it-slowed",
     "filename": "deprezz_-_I_ll_Do_It_Slowed.m4a",
     "title": "deprezz - I'll Do It (Slowed)",
-    "duration": "4:27"
+    "duration": "4:26"
   },
   {
     "id": "funk-sigilo-slowed",
     "filename": "FUNK_SIGILO_SLOWED.m4a",
     "title": "FUNK SIGILO (SLOWED)",
-    "duration": "1:44"
+    "duration": "1:43"
   },
   {
     "id": "pinky-smash-lost-astronaut-slowed",
     "filename": "PINKY_SMASH_-_LOST_ASTRONAUT_SLOWED.m4a",
     "title": "PINKY SMASH - LOST ASTRONAUT (SLOWED)",
-    "duration": "3:04"
+    "duration": "3:03"
   },
   {
     "id": "kobe-mane-violento-slowed",
     "filename": "Kobe_Mane_-_VIOLENTO_Slowed.m4a",
     "title": "Kobe Mane - VIOLENTO (Slowed)",
-    "duration": "1:40"
+    "duration": "1:39"
   },
   {
     "id": "x-slide-ultra-slowed",
@@ -231,13 +235,13 @@
     "id": "zxkai-slxughter-no-batidao-slowed-reverb",
     "filename": "ZXKAI_slxughter_-_NO_BATIDAO_Slowed_+_Reverb.m4a",
     "title": "ZXKAI, slxughter -  NO BATID�O (Slowed + Reverb)",
-    "duration": "1:49"
+    "duration": "1:48"
   },
   {
     "id": "montagem-alucinante-super-slowed",
     "filename": "MONTAGEM_ALUCINANTE_SUPER_SLOWED.m4a",
     "title": "MONTAGEM ALUCINANTE (SUPER SLOWED)",
-    "duration": "3:48"
+    "duration": "3:47"
   },
   {
     "id": "bxkq-pxlwyse-te-conoci-super-slowed-official-audio",
@@ -255,37 +259,39 @@
     "id": "eternxlkz-sente-mais-super-slowed-reverb",
     "filename": "Eternxlkz_-_SENTE_MAIS_Super_Slowed_Reverb.m4a",
     "title": "Eternxlkz - SENTE MAIS (Super Slowed & Reverb)",
-    "duration": "2:52"
+    "duration": "2:43",
+    "endTime": 163
   },
   {
     "id": "mgd-khangmxne-2-phut-hon-funk-super-slowed-reverb",
     "filename": "MGD_KhangMxne_-_2_Phut_hon_Funk_Super_Slowed_+_Reverb.m4a",
     "title": "MGD & KhangMxne - 2 Phut hon Funk (  + )",
-    "duration": "3:05"
+    "duration": "3:04"
   },
   {
     "id": "malvado-de-vapo-slowed",
     "filename": "MALVADO_DE_VAPO_Slowed.m4a",
     "title": "MALVADO DE VAPO (Slowed)",
-    "duration": "1:27"
+    "duration": "1:23",
+    "endTime": 83
   },
   {
     "id": "voce-na-mira-jumpstyle-slowed",
     "filename": "VOCE_NA_MIRA_JUMPSTYLE_Slowed.m4a",
     "title": "VOCE NA MIRA JUMPSTYLE (Slowed)",
-    "duration": "2:43"
+    "duration": "2:42"
   },
   {
     "id": "mazko-slowed",
     "filename": "MAZKO_Slowed.m4a",
     "title": "MAZKO (Slowed)",
-    "duration": "1:25"
+    "duration": "1:24"
   },
   {
     "id": "red-sex-restrung-best-part-extended-slowed-reverb-shortened",
     "filename": "Red_Sex_restrung_best_part_extended_Slowed+Reverb_shortened.m4a",
     "title": "Red Sex restrung best part extended Slowed+Reverb (shortened)",
-    "duration": "1:07"
+    "duration": "1:06"
   },
   {
     "id": "you-look-lonely-i-can-fix-that-x-softcore-slowed-reverb",
@@ -321,13 +327,14 @@
     "id": "the-weeknd-sao-paulo-lyrics-feat-anitta",
     "filename": "The_Weeknd_-_Sao_Paulo_Lyrics_feat._Anitta.m4a",
     "title": "The Weeknd - S�o Paulo (Lyrics) feat. Anitta",
-    "duration": "5:02"
+    "duration": "5:01"
   },
   {
     "id": "imogen-heap-headlock-lyrics",
     "filename": "Imogen_Heap_-_Headlock_Lyrics.m4a",
     "title": "Imogen Heap - Headlock (Lyrics)",
-    "duration": "3:36"
+    "duration": "3:30",
+    "endTime": 210
   },
   {
     "id": "i-could-be",
@@ -339,6 +346,7 @@
     "id": "blackbear-hot-girl-bummer-slowed-reverb",
     "filename": "blackbear_-_hot_girl_bummer_slowed_+_reverb.m4a",
     "title": "blackbear - hot girl bummer (slowed + reverb)",
-    "duration": "3:37"
+    "duration": "3:32",
+    "endTime": 212
   }
 ]

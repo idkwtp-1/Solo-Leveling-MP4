@@ -6,6 +6,7 @@ export type Track = {
   title: string;
   duration: string;
   filename?: string;
+  endTime?: number;
 };
 
 export type Gate = {

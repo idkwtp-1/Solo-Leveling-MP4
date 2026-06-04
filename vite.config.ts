@@ -18,5 +18,8 @@ export default defineConfig({
       port: 8081,
       strictPort: true,
     },
+    optimizeDeps: {
+      include: ["use-sync-external-store/shim/with-selector"],
+    },
   },
 });
