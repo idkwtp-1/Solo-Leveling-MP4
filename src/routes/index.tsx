@@ -140,11 +140,10 @@ function ShadowPlayerPage() {
   const { data: assignmentsData, refetch: refetchAssignments } = useQuery<Record<string, string>>({
     queryKey: ["assignments"],
     queryFn: async () => {
-      if (import.meta.env.PROD) {
-        // Rely purely on localStorage, return empty to not overwrite
-        return {};
-      }
-      const res = await fetch(`${API_BASE}/api/assignments`);
+      const url = import.meta.env.PROD
+        ? `${import.meta.env.BASE_URL}media/assignments.json`
+        : `${API_BASE}/api/assignments`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch assignments");
       return res.json();
     },

@@ -33,8 +33,6 @@ dist-ssr
 
 # Media & Binaries
 backend/yt-dlp.exe
-backend/media/*.mp3
-backend/media/*.m4a
 
 # Git History Simulation Tools
 simulate_history.cjs
