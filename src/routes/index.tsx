@@ -59,6 +59,9 @@ const DEFAULT_ASSIGNMENTS: Record<string, string> = {
 };
 
 const fetchGates = async (): Promise<Gate[]> => {
+  if (import.meta.env.PROD) {
+    return GATES;
+  }
   const res = await fetch(`${API_BASE}/api/gates`);
   if (!res.ok) throw new Error("Backend connection failed");
   return res.json();
@@ -66,7 +69,10 @@ const fetchGates = async (): Promise<Gate[]> => {
 
 const fetchDrops = async (): Promise<Record<string, number[]>> => {
   try {
-    const res = await fetch(`${API_BASE}/api/drops`);
+    const url = import.meta.env.PROD
+      ? `${import.meta.env.BASE_URL}media/beat_drops.json`
+      : `${API_BASE}/api/drops`;
+    const res = await fetch(url);
     if (!res.ok) return {};
     return res.json();
   } catch {
@@ -76,9 +82,24 @@ const fetchDrops = async (): Promise<Record<string, number[]>> => {
 
 const fetchTracks = async (): Promise<Track[]> => {
   try {
-    const res = await fetch(`${API_BASE}/api/tracks`);
+    const url = import.meta.env.PROD
+      ? `${import.meta.env.BASE_URL}media/tracks_inventory.json`
+      : `${API_BASE}/api/tracks`;
+    const res = await fetch(url);
     if (!res.ok) return NEW_UNASSIGNED_TRACKS;
-    return res.json();
+    
+    // Format JSON array or object mapping
+    const data = await res.json();
+    if (Array.isArray(data)) return data;
+    
+    // Statically mapped format from file
+    return Object.entries(data).map(([id, t]: [string, any]) => ({
+      id,
+      index: "??",
+      title: t.title,
+      duration: "??",
+      filename: t.filename
+    }));
   } catch {
     return NEW_UNASSIGNED_TRACKS;
   }
@@ -119,6 +140,10 @@ function ShadowPlayerPage() {
   const { data: assignmentsData, refetch: refetchAssignments } = useQuery<Record<string, string>>({
     queryKey: ["assignments"],
     queryFn: async () => {
+      if (import.meta.env.PROD) {
+        // Rely purely on localStorage, return empty to not overwrite
+        return {};
+      }
       const res = await fetch(`${API_BASE}/api/assignments`);
       if (!res.ok) throw new Error("Failed to fetch assignments");
       return res.json();
@@ -159,6 +184,7 @@ function ShadowPlayerPage() {
       localStorage.setItem("slplayer-track-assignments", JSON.stringify(next));
       return next;
     });
+    if (import.meta.env.PROD) return;
     try {
       await fetch(`${API_BASE}/api/assignments`, {
         method: "POST",
@@ -178,6 +204,7 @@ function ShadowPlayerPage() {
       localStorage.setItem("slplayer-track-assignments", JSON.stringify(next));
       return next;
     });
+    if (import.meta.env.PROD) return;
     try {
       await fetch(`${API_BASE}/api/assignments`, {
         method: "POST",
@@ -1198,7 +1225,9 @@ function ShadowPlayerPage() {
         crossOrigin="anonymous"
         src={
           activeTrack
-            ? `${API_BASE}/api/stream/${encodeURIComponent(activeTrack.id)}`
+            ? import.meta.env.PROD
+              ? `${import.meta.env.BASE_URL}media/${activeTrack.filename || `${activeTrack.id}.mp3`}`
+              : `${API_BASE}/api/stream/${encodeURIComponent(activeTrack.id)}`
             : undefined
         }
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}

@@ -213,6 +213,55 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
     let raf = 0;
     let t = 0;
     const frequencyData = new Uint8Array(128);
+    
+    // --- OFFSCREEN CANVAS CACHING ---
+    // Mist particles
+    const mistBlueCache = document.createElement("canvas");
+    mistBlueCache.width = 120;
+    mistBlueCache.height = 120;
+    const mbc = mistBlueCache.getContext("2d");
+    if (mbc) {
+      const grad = mbc.createRadialGradient(60, 60, 0, 60, 60, 60);
+      grad.addColorStop(0, "rgba(0, 180, 255, 1.0)");
+      grad.addColorStop(0.5, "rgba(0, 180, 255, 0.33)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      mbc.fillStyle = grad;
+      mbc.fillRect(0, 0, 120, 120);
+    }
+    
+    const mistPurpleCache = document.createElement("canvas");
+    mistPurpleCache.width = 120;
+    mistPurpleCache.height = 120;
+    const mpc = mistPurpleCache.getContext("2d");
+    if (mpc) {
+      const grad = mpc.createRadialGradient(60, 60, 0, 60, 60, 60);
+      grad.addColorStop(0, "rgba(138, 43, 226, 1.0)");
+      grad.addColorStop(0.5, "rgba(138, 43, 226, 0.33)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      mpc.fillStyle = grad;
+      mpc.fillRect(0, 0, 120, 120);
+    }
+
+    // Screen Droplet Base
+    const dropCache = document.createElement("canvas");
+    dropCache.width = 10;
+    dropCache.height = 10;
+    const dc = dropCache.getContext("2d");
+    if (dc) {
+      dc.fillStyle = "rgba(11, 14, 20, 1.0)";
+      dc.beginPath();
+      dc.arc(6, 6, 4, 0, Math.PI * 2);
+      dc.fill();
+      const dropGrad = dc.createRadialGradient(4.2, 4.2, 0.4, 5, 5, 4);
+      dropGrad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+      dropGrad.addColorStop(0.5, "rgba(0, 210, 255, 0.45)");
+      dropGrad.addColorStop(1, "rgba(138, 43, 226, 0.35)");
+      dc.fillStyle = dropGrad;
+      dc.beginPath();
+      dc.arc(5, 5, 4, 0, Math.PI * 2);
+      dc.fill();
+    }
+    // --------------------------------
 
     // Lightning strike animation variables
     const enableLightning = intensity === "medium" || intensity === "intense";
@@ -329,24 +378,17 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
         // Rendering
         ctx.save();
         if (p.type === "mist") {
-          // Mist glow circle
-          const grad = ctx.createRadialGradient(
-            p.x,
-            p.y,
-            0,
-            p.x,
-            p.y,
-            currentSize / 2,
+          // Draw using cached offscreen canvases
+          const cacheCanvas = i % 2 === 0 ? mistPurpleCache : mistBlueCache;
+          ctx.globalAlpha = currentAlpha * 0.45; // Max opacity scale
+          ctx.drawImage(
+            cacheCanvas, 
+            p.x - currentSize / 2, 
+            p.y - currentSize / 2, 
+            currentSize, 
+            currentSize
           );
-          // Dark obsidian/purple hue
-          const color = i % 2 === 0 ? "138, 43, 226" : "0, 180, 255";
-          grad.addColorStop(0, `rgba(${color}, ${currentAlpha * 0.45})`);
-          grad.addColorStop(0.5, `rgba(${color}, ${currentAlpha * 0.15})`);
-          grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, currentSize / 2, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.globalAlpha = 1.0;
         } else if (p.type === "rune") {
           // Runic glyphs
           if (p.rotation !== undefined && p.rotationSpeed !== undefined) {
@@ -357,8 +399,15 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
 
           ctx.font = `bold ${currentSize}px "Orbitron", "Rajdhani", sans-serif`;
           ctx.fillStyle = `rgba(0, 210, 255, ${currentAlpha})`;
-          ctx.shadowBlur = hasAudio ? 6 + treble * 12 : 6;
-          ctx.shadowColor = `rgba(138, 43, 226, ${currentAlpha * 0.85})`;
+          if (intensity !== "intense") {
+            ctx.shadowBlur = hasAudio ? 6 + treble * 12 : 6;
+            ctx.shadowColor = `rgba(138, 43, 226, ${currentAlpha * 0.85})`;
+          } else {
+            // Intense mode skips expensive shadowBlur, uses double text rendering instead
+            ctx.fillStyle = `rgba(138, 43, 226, ${currentAlpha * 0.5})`;
+            ctx.fillText(p.char || "", 2, 2);
+            ctx.fillStyle = `rgba(0, 210, 255, ${currentAlpha})`;
+          }
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(p.char || "", 0, 0);
@@ -418,27 +467,16 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             ctx.stroke();
           }
 
-          // Draw drop
-          ctx.fillStyle = `rgba(11, 14, 20, ${drop.alpha * 0.45})`;
-          ctx.beginPath();
-          ctx.arc(drop.x + 1, drop.y + 1, drop.r, 0, Math.PI * 2);
-          ctx.fill();
-
-          const dropGrad = ctx.createRadialGradient(
-            drop.x - drop.r * 0.2,
-            drop.y - drop.r * 0.2,
-            drop.r * 0.1,
-            drop.x,
-            drop.y,
-            drop.r,
+          // Draw drop using cache
+          ctx.globalAlpha = drop.alpha * 0.7;
+          ctx.drawImage(
+            dropCache,
+            drop.x - drop.r * 1.25,
+            drop.y - drop.r * 1.25,
+            drop.r * 2.5,
+            drop.r * 2.5
           );
-          dropGrad.addColorStop(0, `rgba(255, 255, 255, ${drop.alpha * 0.7})`);
-          dropGrad.addColorStop(0.5, `rgba(0, 210, 255, ${drop.alpha * 0.3})`);
-          dropGrad.addColorStop(1, `rgba(138, 43, 226, ${drop.alpha * 0.25})`);
-          ctx.fillStyle = dropGrad;
-          ctx.beginPath();
-          ctx.arc(drop.x, drop.y, drop.r, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.globalAlpha = 1.0;
         }
         ctx.restore();
       }
@@ -571,8 +609,20 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             ) => {
               ctx.save();
               ctx.strokeStyle = strokeColor;
-              ctx.shadowBlur = blur;
-              ctx.shadowColor = blurColor;
+              if (intensity !== "intense") {
+                ctx.shadowBlur = blur;
+                ctx.shadowColor = blurColor;
+              } else {
+                ctx.strokeStyle = blurColor;
+                ctx.lineWidth = width * 1.8;
+                ctx.beginPath();
+                for (const seg of bolt) {
+                  ctx.moveTo(seg.x1, seg.y1);
+                  ctx.lineTo(seg.x2, seg.y2);
+                }
+                ctx.stroke();
+                ctx.strokeStyle = strokeColor;
+              }
               ctx.lineWidth = width;
               ctx.beginPath();
               for (const seg of bolt) {

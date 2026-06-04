@@ -23,6 +23,14 @@ class Api:
     def set_window(self, window):
         self._window = window
 
+    def close_app(self):
+        if self._window:
+            self._window.destroy()
+
+    def minimize_app(self):
+        if self._window:
+            self._window.minimize()
+
     def toggle_mini_mode(self, is_mini):
         if not self._window:
             return
@@ -31,7 +39,7 @@ class Api:
             # Exit fullscreen first, then shrink to mini size
             self._window.toggle_fullscreen()
             time.sleep(0.15)
-            self._window.resize(360, 240)
+            self._window.resize(300, 180)
             self._window.set_on_top(True)
             print("[SYSTEM] Mini player active.")
         elif not is_mini and self._mini_active:
@@ -55,6 +63,12 @@ def wait_for_port(port, timeout=20):
 def main():
     print("[SYSTEM] Starting Shadow Player desktop client wrappers...")
     
+    # Ensure logs directory exists
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    backend_log = open(os.path.join(log_dir, "backend_server.log"), "w")
+    dev_log = open(os.path.join(log_dir, "dev_server.log"), "w")
+    
     # 1. Start the Express Backend Server
     backend_proc = None
     try:
@@ -62,11 +76,13 @@ def main():
         backend_proc = subprocess.Popen(
             ["npm", "run", "server"],
             shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stdout=backend_log,
+            stderr=backend_log
         )
     except Exception as e:
         print(f"[ERROR] Failed to start backend: {e}")
+        if sys.platform == "win32":
+            ctypes.windll.user32.MessageBoxW(0, f"Failed to start backend: {e}", "SYSTEM ERROR", 16)
         sys.exit(1)
         
     # 2. Start the Vite Frontend Dev Server
@@ -76,19 +92,28 @@ def main():
         frontend_proc = subprocess.Popen(
             ["npm", "run", "dev"],
             shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stdout=dev_log,
+            stderr=dev_log
         )
     except Exception as e:
         print(f"[ERROR] Failed to start frontend: {e}")
         if backend_proc:
             backend_proc.terminate()
+        if sys.platform == "win32":
+            ctypes.windll.user32.MessageBoxW(0, f"Failed to start frontend: {e}", "SYSTEM ERROR", 16)
         sys.exit(1)
         
     # 3. Wait for Vite server to spin up
     print("[SYSTEM] Waiting for local servers to initialize...")
     if not wait_for_port(8081, timeout=20):
         print("[WARNING] Vite dev server did not respond on port 8081 within timeout.")
+        if sys.platform == "win32":
+            ctypes.windll.user32.MessageBoxW(0, "Vite dev server failed to start on port 8081. Please check logs/dev_server.log for details.", "SYSTEM INITIALIZATION FAILED", 16)
+        if frontend_proc:
+            frontend_proc.terminate()
+        if backend_proc:
+            backend_proc.terminate()
+        sys.exit(1)
     
     # 4. Initialize pywebview native window wrapper
     print("[SYSTEM] Launching native window...")
@@ -102,6 +127,8 @@ def main():
             height=720,
             min_size=(800, 600),
             fullscreen=True,
+            frameless=True,
+            easy_drag=True,
             background_color='#0b0e14',
             js_api=api
         )
