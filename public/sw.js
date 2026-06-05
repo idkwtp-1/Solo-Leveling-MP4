@@ -1,5 +1,5 @@
-const CACHE_NAME = "slplayer-v2";
-const STATIC_CACHE = "slplayer-static-v2";
+const CACHE_NAME = "slplayer-v3";
+const STATIC_CACHE = "slplayer-static-v3";
 const AUDIO_CACHE = "slplayer-audio-v3";
 
 const STATIC_ASSETS = [
@@ -157,13 +157,11 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const contentType = response.headers.get("content-type") || "";
-        // Cache successful responses for standard files (don't cache HTML fallbacks for assets/data)
+        // Cache successful responses for standard files
         if (
           response.ok &&
           request.method === "GET" &&
-          !url.pathname.includes("/api/") &&
-          (!contentType.includes("text/html") || request.headers.get("accept")?.includes("text/html"))
+          !url.pathname.includes("/api/")
         ) {
           const responseClone = response.clone();
           caches.open(STATIC_CACHE).then((cache) => {
