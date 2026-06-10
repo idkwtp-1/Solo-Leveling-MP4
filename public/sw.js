@@ -2,20 +2,23 @@ const CACHE_NAME = "slplayer-v3";
 const STATIC_CACHE = "slplayer-static-v3";
 const AUDIO_CACHE = "slplayer-audio-v3";
 
+// Derive base path from SW location so it works on both localhost (/) and GitHub Pages (/Solo-Leveling-MP4/)
+const BASE_PATH = new URL("./", self.location).pathname;
+
 const STATIC_ASSETS = [
-  "/",
-  "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png",
-  "/fonts/orbitron-500.woff2",
-  "/fonts/orbitron-700.woff2",
-  "/fonts/orbitron-900.woff2",
-  "/fonts/rajdhani-400.woff2",
-  "/fonts/rajdhani-500.woff2",
-  "/fonts/rajdhani-600.woff2",
-  "/fonts/rajdhani-700.woff2",
-  "/fonts/robotomono-400.woff2",
-  "/fonts/robotomono-500.woff2",
+  BASE_PATH,
+  BASE_PATH + "manifest.json",
+  BASE_PATH + "icon-192.png",
+  BASE_PATH + "icon-512.png",
+  BASE_PATH + "fonts/orbitron-500.woff2",
+  BASE_PATH + "fonts/orbitron-700.woff2",
+  BASE_PATH + "fonts/orbitron-900.woff2",
+  BASE_PATH + "fonts/rajdhani-400.woff2",
+  BASE_PATH + "fonts/rajdhani-500.woff2",
+  BASE_PATH + "fonts/rajdhani-600.woff2",
+  BASE_PATH + "fonts/rajdhani-700.woff2",
+  BASE_PATH + "fonts/robotomono-400.woff2",
+  BASE_PATH + "fonts/robotomono-500.woff2",
 ];
 
 self.addEventListener("install", (event) => {
@@ -31,9 +34,9 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => {
+    Promise.all([
+      // Clean old caches
+      caches.keys().then((keys) => {
         return Promise.all(
           keys.map((key) => {
             if (key !== STATIC_CACHE && key !== AUDIO_CACHE) {
@@ -41,12 +44,75 @@ self.addEventListener("activate", (event) => {
             }
           }),
         );
-      })
-      .then(() => self.clients.claim()),
+      }),
+      // Claim clients
+      self.clients.claim(),
+    ]).then(() => {
+      // Pre-cache all media files in the background (non-blocking)
+      precacheAllMedia();
+    }),
   );
 });
 
-// Helper to serve range requests from cached full audio response
+// ─── Pre-cache all media files for offline use ───
+async function precacheAllMedia() {
+  try {
+    const inventoryUrl = BASE_PATH + "media/tracks_inventory.json";
+    const res = await fetch(inventoryUrl);
+    if (!res.ok) {
+      console.warn("[SW] Could not fetch tracks inventory for pre-caching");
+      return;
+    }
+    const tracks = await res.json();
+    const cache = await caches.open(AUDIO_CACHE);
+
+    let cached = 0;
+    let skipped = 0;
+
+    for (const track of tracks) {
+      if (!track.filename) continue;
+      const url = BASE_PATH + "media/" + track.filename;
+
+      // Skip if already cached
+      const existing = await cache.match(url);
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          await cache.put(url, response);
+          cached++;
+        }
+      } catch (err) {
+        console.warn(`[SW] Failed to pre-cache: ${track.filename}`, err);
+      }
+    }
+
+    console.log(
+      `[SW] Pre-cache complete: ${cached} new, ${skipped} already cached`,
+    );
+
+    // Notify all clients that pre-caching is done
+    const clients = await self.clients.matchAll();
+    clients.forEach((client) => {
+      client.postMessage({ type: "PRECACHE_COMPLETE", cached, skipped });
+    });
+  } catch (e) {
+    console.warn("[SW] Pre-cache media failed:", e);
+  }
+}
+
+// Listen for pre-cache requests from the frontend
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "PRECACHE_MEDIA") {
+    precacheAllMedia();
+  }
+});
+
+// ─── Handle range requests from cached audio ───
 async function handleRangeRequest(request, cache) {
   // Strip search params to match cache key
   const cacheKey = request.url.split("?")[0];
@@ -137,7 +203,7 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Handle API streaming routes differently (Audio streaming)
+  // Handle API streaming routes differently (Audio streaming — dev mode)
   if (url.pathname.includes("/api/stream/")) {
     event.respondWith(
       caches.open(AUDIO_CACHE).then((cache) => {
@@ -148,6 +214,40 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         });
+      }),
+    );
+    return;
+  }
+
+  // Handle static media file requests — serve from audio cache first (pre-cached)
+  if (
+    url.pathname.includes("/media/") &&
+    (url.pathname.endsWith(".m4a") || url.pathname.endsWith(".mp3"))
+  ) {
+    event.respondWith(
+      caches.open(AUDIO_CACHE).then(async (audioCache) => {
+        const cacheKey = request.url.split("?")[0];
+        const cachedResponse = await audioCache.match(cacheKey);
+
+        if (cachedResponse) {
+          // Serve from audio cache (pre-cached), handling range requests
+          return handleRangeRequest(request, audioCache);
+        }
+
+        // Not in audio cache — try network, then cache the response
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse.ok && request.method === "GET") {
+            const clone = networkResponse.clone();
+            audioCache.put(cacheKey, clone);
+          }
+          return networkResponse;
+        } catch {
+          // Last resort: check static cache
+          const staticCached = await caches.match(request);
+          if (staticCached) return staticCached;
+          return new Response("Audio not available offline", { status: 503 });
+        }
       }),
     );
     return;
@@ -177,7 +277,7 @@ self.addEventListener("fetch", (event) => {
 
           // If HTML page request, return root page
           if (request.headers.get("accept")?.includes("text/html")) {
-            return caches.match("/");
+            return caches.match(BASE_PATH);
           }
         });
       }),

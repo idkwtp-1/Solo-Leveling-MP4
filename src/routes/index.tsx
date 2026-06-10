@@ -17,6 +17,7 @@ import { MiniPlayerView } from "@/components/Shadow/MiniPlayerView";
 import { SidebarQueue } from "@/components/Shadow/SidebarQueue";
 import { MobileQueueDrawer } from "@/components/Shadow/MobileQueueDrawer";
 import { ShadowCursor } from "@/components/Shadow/ShadowCursor";
+import { OfflinePlayer } from "@/components/Shadow/OfflinePlayer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import bgImage from "@/assets/shadow-bg.jpg";
 import { AnimatedBackground } from "@/components/Shadow/AnimatedBackground";
@@ -543,7 +544,7 @@ function ShadowPlayerPage() {
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register(`${import.meta.env.BASE_URL}sw.js`)
         .catch((err) => console.error("[SLPlayer] ServiceWorker failed:", err));
     }
 
@@ -564,14 +565,39 @@ function ShadowPlayerPage() {
   const updateCachedTracks = async () => {
     if (typeof window === "undefined" || !("caches" in window)) return;
     try {
-      const cache = await caches.open("slplayer-audio-v3");
-      const requests = await cache.keys();
-      const ids = requests.map((req) => {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        return decodeURIComponent(parts[parts.length - 1]);
-      });
-      setCachedTrackIds(new Set(ids));
+      const ids = new Set<string>();
+
+      // Check audio cache (API-streamed tracks & pre-cached static media)
+      try {
+        const audioCache = await caches.open("slplayer-audio-v3");
+        const audioRequests = await audioCache.keys();
+        audioRequests.forEach((req) => {
+          const url = new URL(req.url);
+          const parts = url.pathname.split("/");
+          const lastPart = decodeURIComponent(parts[parts.length - 1]);
+          ids.add(lastPart);
+        });
+      } catch {}
+
+      // Check static cache for media files (fallback)
+      try {
+        const staticCache = await caches.open("slplayer-static-v3");
+        const staticRequests = await staticCache.keys();
+        staticRequests.forEach((req) => {
+          const url = new URL(req.url);
+          if (
+            url.pathname.includes("/media/") &&
+            (url.pathname.endsWith(".m4a") || url.pathname.endsWith(".mp3"))
+          ) {
+            const filename = decodeURIComponent(
+              url.pathname.split("/").pop() || "",
+            );
+            ids.add(filename);
+          }
+        });
+      } catch {}
+
+      setCachedTrackIds(ids);
     } catch (e) {
       console.warn("Failed to retrieve cached track list:", e);
     }
@@ -1249,7 +1275,66 @@ function ShadowPlayerPage() {
       gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id))?.name ||
       activeGate.name
     );
-  }, [activeTrack, gates, activeGate, globalShuffleActive]);  return (
+  }, [activeTrack, gates, activeGate, globalShuffleActive]);
+
+  // ─── Offline mode: render simple flat player ───
+  if (isOffline && hasMounted) {
+    return (
+      <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
+        {/* Audio element (shared) */}
+        <audio
+          ref={audioRef}
+          crossOrigin="anonymous"
+          src={
+            activeTrack
+              ? import.meta.env.PROD
+                ? `${import.meta.env.BASE_URL}media/${activeTrack.filename || `${activeTrack.id}.mp3`}`
+                : `${API_BASE}/api/stream/${encodeURIComponent(activeTrack.id)}`
+              : undefined
+          }
+          onTimeUpdate={(e) => {
+            const time = e.currentTarget.currentTime;
+            setCurrentTime(time);
+            if (activeTrack?.endTime && time >= activeTrack.endTime) {
+              handleNext(true);
+            }
+          }}
+          onDurationChange={(e) => {
+            setDuration(activeTrack?.endTime || e.currentTarget.duration || 0);
+          }}
+          onEnded={() => handleNext(true)}
+          onError={(e) => {
+            if (activeTrack) {
+              console.error("Audio stream error:", e);
+              setPlaying(false);
+            }
+          }}
+        />
+        <OfflinePlayer
+          tracks={trackInventory}
+          activeTrack={activeTrack}
+          playing={playing}
+          currentTime={currentTime}
+          duration={duration}
+          onPlay={handlePlay}
+          onToggle={handleToggle}
+          onNext={() => handleNext()}
+          onPrev={handlePrev}
+          onSeek={handleSeek}
+          shuffle={shuffle}
+          onToggleShuffle={() => setShuffle(!shuffle)}
+          repeatMode={repeatMode}
+          onToggleRepeat={() =>
+            setRepeatMode((prev) =>
+              prev === "none" ? "all" : prev === "all" ? "one" : "none",
+            )
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       {/* HTML5 Audio Stream Instance */}
       <audio
