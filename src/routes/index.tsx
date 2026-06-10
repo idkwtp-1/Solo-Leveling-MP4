@@ -82,15 +82,22 @@ const fetchDrops = async (): Promise<Record<string, number[]>> => {
 };
 
 const fetchTracks = async (): Promise<Track[]> => {
+  let data;
   try {
-    const url = import.meta.env.PROD
-      ? `${import.meta.env.BASE_URL}media/tracks_inventory.json`
-      : `${API_BASE}/api/tracks`;
-    const res = await fetch(url);
-    if (!res.ok) return NEW_UNASSIGNED_TRACKS;
-    
-    // Format JSON array or object mapping
-    const data = await res.json();
+    const res = await fetch(`${API_BASE}/api/tracks`);
+    if (!res.ok) throw new Error();
+    data = await res.json();
+  } catch {
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}media/tracks_inventory.json`);
+      if (!res.ok) return NEW_UNASSIGNED_TRACKS;
+      data = await res.json();
+    } catch {
+      return NEW_UNASSIGNED_TRACKS;
+    }
+  }
+
+  try {
     if (Array.isArray(data)) return data;
     
     // Statically mapped format from file
@@ -159,12 +166,17 @@ function ShadowPlayerPage() {
   const { data: assignmentsData, refetch: refetchAssignments } = useQuery<Record<string, string>>({
     queryKey: ["assignments"],
     queryFn: async () => {
-      const url = import.meta.env.PROD
-        ? `${import.meta.env.BASE_URL}media/assignments.json`
-        : `${API_BASE}/api/assignments`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch assignments");
-      return res.json();
+      try {
+        const res = await fetch(`${API_BASE}/api/assignments`);
+        if (!res.ok) throw new Error("Failed to fetch assignments");
+        return res.json();
+      } catch (err) {
+        console.warn("Failed to fetch assignments from API, trying static media:", err);
+        const staticUrl = `${import.meta.env.BASE_URL}media/assignments.json`;
+        const res = await fetch(staticUrl);
+        if (!res.ok) throw new Error("Failed to fetch static assignments");
+        return res.json();
+      }
     },
     initialData: {},
   });
@@ -202,14 +214,15 @@ function ShadowPlayerPage() {
       localStorage.setItem("slplayer-track-assignments", JSON.stringify(next));
       return next;
     });
-    if (import.meta.env.PROD) return;
     try {
-      await fetch(`${API_BASE}/api/assignments`, {
+      const res = await fetch(`${API_BASE}/api/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trackId, gateId }),
       });
-      refetchAssignments();
+      if (res.ok) {
+        refetchAssignments();
+      }
     } catch (e) {
       console.warn("Failed to sync track assignment to server:", e);
     }
@@ -222,14 +235,15 @@ function ShadowPlayerPage() {
       localStorage.setItem("slplayer-track-assignments", JSON.stringify(next));
       return next;
     });
-    if (import.meta.env.PROD) return;
     try {
-      await fetch(`${API_BASE}/api/assignments`, {
+      const res = await fetch(`${API_BASE}/api/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trackId, gateId: null }),
       });
-      refetchAssignments();
+      if (res.ok) {
+        refetchAssignments();
+      }
     } catch (e) {
       console.warn("Failed to sync track unassignment to server:", e);
     }
