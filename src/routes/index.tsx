@@ -53,11 +53,11 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 const DEFAULT_ASSIGNMENTS: Record<string, string> = {
-  "tiki-tiki-slowed": "boss",
+  "tiki-tiki-slowed": "monarch",
   "veki-veki-slowed": "boss",
   "worry-slowed": "boss",
-  "babydoll-perfect-girl": "boss",
-  "one-of-the-girls-mashup": "boss",
+  "babydoll-perfect-girl": "monarch",
+  "one-of-the-girls-mashup": "monarch",
 };
 
 const fetchGates = async (): Promise<Gate[]> => {

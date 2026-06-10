@@ -100,11 +100,11 @@ loadInventory();
 
 const ASSIGNMENTS_PATH = path.join(__dirname, "media", "assignments.json");
 const DEFAULT_ASSIGNMENTS = {
-  "tiki-tiki-slowed": "boss",
+  "tiki-tiki-slowed": "monarch",
   "veki-veki-slowed": "boss",
   "worry-slowed": "boss",
-  "babydoll-perfect-girl": "boss",
-  "one-of-the-girls-mashup": "boss",
+  "babydoll-perfect-girl": "monarch",
+  "one-of-the-girls-mashup": "monarch",
 };
 
 function loadAssignments() {
