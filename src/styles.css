@@ -4,67 +4,67 @@
 
 /* Local Web Fonts */
 @font-face {
-  font-family: 'Orbitron';
+  font-family: "Orbitron";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/orbitron-500.woff2') format('woff2');
+  src: url("/fonts/orbitron-500.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Orbitron';
+  font-family: "Orbitron";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('/fonts/orbitron-700.woff2') format('woff2');
+  src: url("/fonts/orbitron-700.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Orbitron';
+  font-family: "Orbitron";
   font-style: normal;
   font-weight: 900;
   font-display: swap;
-  src: url('/fonts/orbitron-900.woff2') format('woff2');
+  src: url("/fonts/orbitron-900.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Rajdhani';
+  font-family: "Rajdhani";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/rajdhani-400.woff2') format('woff2');
+  src: url("/fonts/rajdhani-400.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Rajdhani';
+  font-family: "Rajdhani";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/rajdhani-500.woff2') format('woff2');
+  src: url("/fonts/rajdhani-500.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Rajdhani';
+  font-family: "Rajdhani";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/rajdhani-600.woff2') format('woff2');
+  src: url("/fonts/rajdhani-600.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Rajdhani';
+  font-family: "Rajdhani";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('/fonts/rajdhani-700.woff2') format('woff2');
+  src: url("/fonts/rajdhani-700.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Roboto Mono';
+  font-family: "Roboto Mono";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/robotomono-400.woff2') format('woff2');
+  src: url("/fonts/robotomono-400.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Roboto Mono';
+  font-family: "Roboto Mono";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/robotomono-500.woff2') format('woff2');
+  src: url("/fonts/robotomono-500.woff2") format("woff2");
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -135,9 +135,12 @@
   --border: oklch(0.55 0.15 230 / 0.35);
   --input: oklch(0.22 0.03 260);
 
-  --glow-blue: 0 0 12px oklch(0.82 0.16 220 / 0.7), 0 0 32px oklch(0.7 0.18 230 / 0.45);
-  --glow-purple: 0 0 12px oklch(0.5 0.27 295 / 0.7), 0 0 36px oklch(0.5 0.27 295 / 0.4);
-  --glow-mixed: 0 0 14px oklch(0.82 0.16 220 / 0.55), 0 0 28px oklch(0.5 0.27 295 / 0.45);
+  --glow-blue:
+    0 0 12px oklch(0.82 0.16 220 / 0.7), 0 0 32px oklch(0.7 0.18 230 / 0.45);
+  --glow-purple:
+    0 0 12px oklch(0.5 0.27 295 / 0.7), 0 0 36px oklch(0.5 0.27 295 / 0.4);
+  --glow-mixed:
+    0 0 14px oklch(0.82 0.16 220 / 0.55), 0 0 28px oklch(0.5 0.27 295 / 0.45);
 
   --clip-panel: polygon(
     14px 0,
@@ -189,19 +192,9 @@
     color: oklch(0.98 0.01 240);
   }
 
-  /* Custom desktop scrollbar */
+  /* Custom desktop scrollbar removed */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: oklch(0.55 0.15 230 / 0.4);
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.82 0.16 220 / 0.6);
+    display: none;
   }
 }
 
@@ -235,10 +228,14 @@
   }
 
   .text-glow-blue {
-    text-shadow: 0 0 8px oklch(0.82 0.16 220 / 0.8), 0 0 20px oklch(0.7 0.18 230 / 0.5);
+    text-shadow:
+      0 0 8px oklch(0.82 0.16 220 / 0.8),
+      0 0 20px oklch(0.7 0.18 230 / 0.5);
   }
   .text-glow-purple {
-    text-shadow: 0 0 8px oklch(0.5 0.27 295 / 0.9), 0 0 24px oklch(0.5 0.27 295 / 0.5);
+    text-shadow:
+      0 0 8px oklch(0.5 0.27 295 / 0.9),
+      0 0 24px oklch(0.5 0.27 295 / 0.5);
   }
 
   .neon-border {
@@ -260,7 +257,10 @@
   }
 
   .tap-press {
-    transition: transform 80ms ease, box-shadow 120ms ease, filter 120ms ease;
+    transition:
+      transform 80ms ease,
+      box-shadow 120ms ease,
+      filter 120ms ease;
   }
   .tap-press:active {
     transform: scale(0.97);
@@ -276,27 +276,53 @@
     animation: vortex-spin 8s linear infinite;
   }
   @keyframes pulse-ring {
-    0%, 100% { opacity: 0.55; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.04); }
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
   }
   .animate-pulse-ring {
     animation: pulse-ring 2.4s ease-in-out infinite;
   }
   @keyframes flicker {
-    0%, 100% { opacity: 1; }
-    47% { opacity: 1; }
-    48% { opacity: 0.4; }
-    49% { opacity: 1; }
-    72% { opacity: 1; }
-    73% { opacity: 0.6; }
-    74% { opacity: 1; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    47% {
+      opacity: 1;
+    }
+    48% {
+      opacity: 0.4;
+    }
+    49% {
+      opacity: 1;
+    }
+    72% {
+      opacity: 1;
+    }
+    73% {
+      opacity: 0.6;
+    }
+    74% {
+      opacity: 1;
+    }
   }
   .animate-flicker {
     animation: flicker 6s linear infinite;
   }
   @keyframes marquee {
-    0% { transform: translateX(0%); }
-    100% { transform: translateX(-100%); }
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
   }
   .animate-marquee {
     display: inline-block;

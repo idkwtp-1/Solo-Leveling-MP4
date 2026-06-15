@@ -12,7 +12,7 @@ const inventoryPath = path.join(mediaDir, "tracks_inventory.json");
 // Refresh PATH environment variables in node so child processes can locate newly installed Gyan.FFmpeg
 try {
   const freshPath = execSync(
-    'powershell "[System.Environment]::GetEnvironmentVariable(\'Path\',\'Machine\') + \';\' + [System.Environment]::GetEnvironmentVariable(\'Path\',\'User\')"'
+    "powershell \"[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')\"",
   )
     .toString()
     .trim();
@@ -24,7 +24,7 @@ try {
 const urls = [
   "https://youtu.be/BoLQdlfV_XA?si=XuKhRnJFf152PBBO",
   "https://youtu.be/TdrL3QxjyVw?si=jc5WObtVvOabMRPt",
-  "https://youtu.be/MiAoetOXKcY?si=1hF56Lf81cuy0o2F"
+  "https://youtu.be/MiAoetOXKcY?si=1hF56Lf81cuy0o2F",
 ];
 
 function formatDuration(secStr) {
@@ -74,15 +74,24 @@ async function main() {
           "%(filename)s",
           url,
         ],
-        { encoding: "utf-8" }
+        { encoding: "utf-8" },
       );
 
-      const lines = output.trim().split("\n").filter((l) => l.trim() !== "");
+      const lines = output
+        .trim()
+        .split("\n")
+        .filter((l) => l.trim() !== "");
       // Filter out warnings/extra logs if present
-      const cleanLines = lines.filter((l) => !l.startsWith("WARNING:") && !l.includes("supported JavaScript runtime"));
+      const cleanLines = lines.filter(
+        (l) =>
+          !l.startsWith("WARNING:") &&
+          !l.includes("supported JavaScript runtime"),
+      );
 
       if (cleanLines.length < 3) {
-        console.error(`Unexpected yt-dlp output format. Output was:\n${output}`);
+        console.error(
+          `Unexpected yt-dlp output format. Output was:\n${output}`,
+        );
         continue;
       }
 
@@ -92,7 +101,10 @@ async function main() {
       const relativeFileName = path.basename(absoluteFilePath);
 
       // Generate sanitized track ID
-      const baseName = path.basename(relativeFileName, path.extname(relativeFileName));
+      const baseName = path.basename(
+        relativeFileName,
+        path.extname(relativeFileName),
+      );
       const trackId = baseName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -100,7 +112,9 @@ async function main() {
 
       console.log(`Downloaded: ${relativeFileName}`);
       console.log(`Title: ${title}`);
-      console.log(`Duration: ${formatDuration(durationSecs)} (${durationSecs}s)`);
+      console.log(
+        `Duration: ${formatDuration(durationSecs)} (${durationSecs}s)`,
+      );
       console.log(`Track ID: ${trackId}`);
 
       // Add to inventory if not already present
@@ -112,14 +126,15 @@ async function main() {
           duration: formatDuration(durationSecs),
         });
         existingIds.add(trackId);
-        
+
         // Write incrementally to prevent data loss
         fs.writeFileSync(inventoryPath, JSON.stringify(inventory, null, 2));
         console.log(`Added track to inventory: ${trackId}`);
       } else {
-        console.log(`Track ${trackId} already exists in inventory, skipping registration.`);
+        console.log(
+          `Track ${trackId} already exists in inventory, skipping registration.`,
+        );
       }
-
     } catch (err) {
       console.error(`Failed to process URL: ${url}`, err.message);
     }
@@ -133,7 +148,7 @@ async function main() {
     const analysisOutput = execFileSync(
       "python",
       [path.join(__dirname, "analyze_drops.py")],
-      { stdio: "inherit", env: process.env }
+      { stdio: "inherit", env: process.env },
     );
     console.log("Analysis completed successfully!");
   } catch (err) {

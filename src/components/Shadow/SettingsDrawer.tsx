@@ -323,7 +323,9 @@ export function SettingsDrawer({
                       <input
                         type="checkbox"
                         checked={normalizationEnabled}
-                        onChange={(e) => setNormalizationEnabled(e.target.checked)}
+                        onChange={(e) =>
+                          setNormalizationEnabled(e.target.checked)
+                        }
                         className="sr-only peer"
                       />
                       <div className="w-7 h-4 bg-border/40 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary" />

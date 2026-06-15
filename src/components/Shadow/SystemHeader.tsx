@@ -19,7 +19,6 @@ export function SystemHeader({ onOpenSettings }: Props) {
         </h1>
       </div>
       <div className="flex items-center gap-4">
-        
         {/* Custom Window Controls (Visible only in desktop mode when pywebview is available) */}
         <div className="flex items-center gap-2 border-l border-border/50 pl-4">
           {onOpenSettings && (

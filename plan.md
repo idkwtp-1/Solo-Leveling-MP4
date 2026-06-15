@@ -5,6 +5,7 @@ A single-page React frontend for "Shadow Player," styled as a Solo Leveling "Sys
 ## 1. Design System (src/styles.css)
 
 Replace tokens with a Solo Leveling system palette (all `oklch`):
+
 - `--background` → abyssal obsidian (#0B0E14)
 - `--surface` → deep space slate (#121620)
 - `--primary` → neon system blue (#00D2FF)
@@ -14,6 +15,7 @@ Replace tokens with a Solo Leveling system palette (all `oklch`):
 - Custom tokens: `--glow-blue`, `--glow-purple`, `--clip-panel` (polygon clip-path), `--shadow-aura` (layered box-shadows)
 
 Fonts via Google Fonts `<link>` injected in `__root.tsx` head:
+
 - **Orbitron** + **Rajdhani** (display/headers)
 - **Roboto Mono** (timers, indices, serial codes)
 
@@ -24,6 +26,7 @@ Global radius capped (`--radius` ≈ 2px → max `rounded-sm`). Utility classes:
 Single route `src/routes/index.tsx`. Replace placeholder index. Update `__root.tsx` head metadata + font links. Define meta title/description for "Shadow Player // System Online".
 
 App shell stack (in order):
+
 1. Fixed background image layer (`<div>` with bg-image — placeholder generated via imagegen, a moody monarch throne / shadow gate).
 2. Absolute radial gradient overlay exactly per spec: `radial-gradient(circle at center, rgba(11,14,20,0.6) 0%, rgba(11,14,20,0.97) 100%)`.
 3. App content layer.
@@ -32,6 +35,7 @@ App shell stack (in order):
 ## 3. State Management
 
 Local React state inside index route (no global store needed):
+
 - `activeTrackId: string | null`
 - `playing: boolean`
 - `activePlaylist: string`
@@ -39,6 +43,7 @@ Local React state inside index route (no global store needed):
 `activeTrackId !== null` triggers **State B** (System Active). Otherwise **State A** (System Start).
 
 Mock data file `src/lib/shadow-data.ts`:
+
 - 6 gates/playlists: BOSS THEMES, SHADOW HYPE, CHILL VOID, MONARCH'S DOMAIN, DUNGEON RUN, AWAKENING.
 - Tracks per playlist (e.g., MONARCH'S APPROACH, IRON BODY, ARISE, RULER'S HAND, etc.), each with `id`, `index`, `title`, `duration`. **Artist is hard-coded to "SLPlayer Project" everywhere it renders** (not stored — rendered as constant) to satisfy the critical text regulation.
 
@@ -70,6 +75,7 @@ Use Framer Motion (`motion` + `LayoutGroup` + `layoutId`) so the Status Window �
 `useIsMobile()` (already in `src/hooks/use-mobile.tsx`) gates the mount.
 
 Implementation in `ShadowCursor.tsx`:
+
 - Full-viewport `<canvas>`, `position: fixed`, `pointer-events: none`, `mix-blend-mode: screen`.
 - On `mousemove`, push particle with position, velocity (slight randomized lag), life, hue (alternating ~270° purple and ~195° blue).
 - RAF loop: fade canvas by drawing semi-transparent black rect each frame (creates trail). For each particle: update position with drift + slight upward curl (flame-like), shrink radius, draw radial gradient blob. Spawn 2–3 particles per move event so trail feels heavy/plumed.
@@ -89,6 +95,7 @@ One generated background image via `imagegen` (premium not required): atmospheri
 ## 9. Dependencies
 
 Add via `bun add`:
+
 - `framer-motion` (shared layout transitions)
 
 Already present: Tailwind v4, shadcn drawer, lucide-react.
@@ -108,11 +115,12 @@ Already present: Tailwind v4, shadcn drawer, lucide-react.
 
 ## Technical notes
 
-- File-based routing: single `src/routes/index.tsx`; no new routes needed (single-page app per spec).
-- No backend / Lovable Cloud needed — purely a frontend aesthetic build.
-- All colors expressed as `oklch` in `styles.css`; hex values from the brief converted at implementation time.
-- Audio is not implemented; play/pause toggles a visual `playing` state that drives the visualizer animation intensity.
+- **File-based routing**: Single `src/routes/index.tsx` routing.
+- **Audio Engine**: Active HTML5 `<audio>` element integrated with Web Audio API nodes (BiquadFilterNode peaking EQ, DynamicsCompressorNode, custom feedback delay reverb, etc.) for high-fidelity interactive playback.
+- **Extended YouTube Loop Control**: YouTube downloads in `tracks_inventory.json` can be looped video tracks extending past the original length (e.g. 8+ minutes). All tracks now feature an `endTime` property calculated in seconds from their `duration` string. The HTML5 audio player's `onTimeUpdate` loop matches the elapsed playback time against this `endTime` threshold and auto-skips to the next track to trim the extended audio loops to their exact song durations.
+- **Mobile Offline Gesture Compatibility**: Mobile browsers strictly enforce user-gesture requirements for media playback. Playback has been moved to synchronous event-handlers inside `handlePlay`, `handleToggle`, `handleNext`, and `handlePrev` through a synchronous `playTrackSync` method to guarantee uninterrupted media play in offline environments.
+- **New Track Addition**: Added `"sexy-back-slowed"` ("Sexy Back (Slowed + Reverb) Toji") directly to `backend/media/tracks_inventory.json` and static `NEW_UNASSIGNED_TRACKS`, with its default assignment set to `"boss"` ("BOSS THEMES").
 
-## Open question
+## Open questions
 
-None blocking — spec is thorough. Will proceed with a generated background image; if you have specific artwork in mind, drop it in `src/assets/` and I'll swap it.
+None blocking — all requested bugs resolved and verification completed.

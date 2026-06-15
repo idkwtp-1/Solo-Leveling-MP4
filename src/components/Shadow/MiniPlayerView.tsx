@@ -144,9 +144,10 @@ export function MiniPlayerView({
           ZONE 2 — Main body: two-column landscape layout
           Left = PortalVisualizer orb | Right = track info
       ══════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex items-center gap-3 px-3 pt-1 pb-1 min-h-0"
-           style={{ height: "calc(100% - 110px)" }}>
-
+      <div
+        className="relative z-10 flex items-center gap-3 px-3 pt-1 pb-1 min-h-0"
+        style={{ height: "calc(100% - 110px)" }}
+      >
         {/* Left column: Portal Visualizer — same component, smaller size */}
         <motion.div
           layout
@@ -225,7 +226,7 @@ export function MiniPlayerView({
         </div>
 
         <span className="w-8 shrink-0 text-right">
-          {duration > 0 ? formatTime(duration) : track?.duration ?? "0:00"}
+          {duration > 0 ? formatTime(duration) : (track?.duration ?? "0:00")}
         </span>
       </div>
 

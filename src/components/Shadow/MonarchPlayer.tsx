@@ -136,7 +136,9 @@ export function MonarchPlayer({
             <button
               onClick={onTogglePip}
               className={`tap-press transition-colors cursor-pointer ${
-                pipActive ? "text-primary text-glow-blue animate-pulse" : "text-muted-foreground hover:text-primary"
+                pipActive
+                  ? "text-primary text-glow-blue animate-pulse"
+                  : "text-muted-foreground hover:text-primary"
               }`}
               title="Toggle Picture-in-Picture Mini-Player"
               aria-label="Toggle Picture-in-Picture"

@@ -213,7 +213,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
     let raf = 0;
     let t = 0;
     const frequencyData = new Uint8Array(128);
-    
+
     // --- OFFSCREEN CANVAS CACHING ---
     // Mist particles
     const mistBlueCache = document.createElement("canvas");
@@ -228,7 +228,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
       mbc.fillStyle = grad;
       mbc.fillRect(0, 0, 120, 120);
     }
-    
+
     const mistPurpleCache = document.createElement("canvas");
     mistPurpleCache.width = 120;
     mistPurpleCache.height = 120;
@@ -382,11 +382,11 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
           const cacheCanvas = i % 2 === 0 ? mistPurpleCache : mistBlueCache;
           ctx.globalAlpha = currentAlpha * 0.45; // Max opacity scale
           ctx.drawImage(
-            cacheCanvas, 
-            p.x - currentSize / 2, 
-            p.y - currentSize / 2, 
-            currentSize, 
-            currentSize
+            cacheCanvas,
+            p.x - currentSize / 2,
+            p.y - currentSize / 2,
+            currentSize,
+            currentSize,
           );
           ctx.globalAlpha = 1.0;
         } else if (p.type === "rune") {
@@ -474,7 +474,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             drop.x - drop.r * 1.25,
             drop.y - drop.r * 1.25,
             drop.r * 2.5,
-            drop.r * 2.5
+            drop.r * 2.5,
           );
           ctx.globalAlpha = 1.0;
         }

@@ -58,6 +58,7 @@ const DEFAULT_ASSIGNMENTS: Record<string, string> = {
   "worry-slowed": "boss",
   "babydoll-perfect-girl": "monarch",
   "one-of-the-girls-mashup": "monarch",
+  "sexy-back-slowed": "boss",
 };
 
 const fetchGates = async (): Promise<Gate[]> => {
@@ -90,7 +91,9 @@ const fetchTracks = async (): Promise<Track[]> => {
     data = await res.json();
   } catch {
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}media/tracks_inventory.json`);
+      const res = await fetch(
+        `${import.meta.env.BASE_URL}media/tracks_inventory.json`,
+      );
       if (!res.ok) return NEW_UNASSIGNED_TRACKS;
       data = await res.json();
     } catch {
@@ -100,14 +103,14 @@ const fetchTracks = async (): Promise<Track[]> => {
 
   try {
     if (Array.isArray(data)) return data;
-    
+
     // Statically mapped format from file
     return Object.entries(data).map(([id, t]: [string, any]) => ({
       id,
       index: "??",
       title: t.title,
       duration: "??",
-      filename: t.filename
+      filename: t.filename,
     }));
   } catch {
     return NEW_UNASSIGNED_TRACKS;
@@ -164,7 +167,9 @@ function ShadowPlayerPage() {
     initialData: {},
   });
 
-  const { data: assignmentsData, refetch: refetchAssignments } = useQuery<Record<string, string>>({
+  const { data: assignmentsData, refetch: refetchAssignments } = useQuery<
+    Record<string, string>
+  >({
     queryKey: ["assignments"],
     queryFn: async () => {
       try {
@@ -172,7 +177,10 @@ function ShadowPlayerPage() {
         if (!res.ok) throw new Error("Failed to fetch assignments");
         return res.json();
       } catch (err) {
-        console.warn("Failed to fetch assignments from API, trying static media:", err);
+        console.warn(
+          "Failed to fetch assignments from API, trying static media:",
+          err,
+        );
         const staticUrl = `${import.meta.env.BASE_URL}media/assignments.json`;
         const res = await fetch(staticUrl);
         if (!res.ok) throw new Error("Failed to fetch static assignments");
@@ -190,7 +198,14 @@ function ShadowPlayerPage() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed as Record<string, string>;
+          const merged = { ...DEFAULT_ASSIGNMENTS, ...parsed };
+          if (Object.keys(merged).length !== Object.keys(parsed).length) {
+            localStorage.setItem(
+              "slplayer-track-assignments",
+              JSON.stringify(merged),
+            );
+          }
+          return merged;
         }
       }
       localStorage.setItem(
@@ -463,10 +478,17 @@ function ShadowPlayerPage() {
 
   useEffect(() => {
     if (isLoadedRef.current) {
-      localStorage.setItem("slplayer-dsp-normalization", String(normalizationEnabled));
+      localStorage.setItem(
+        "slplayer-dsp-normalization",
+        String(normalizationEnabled),
+      );
     }
     if (!normalizationEnabled && normalizationGainRef.current) {
-      normalizationGainRef.current.gain.setTargetAtTime(1.0, audioContextRef.current?.currentTime || 0, 0.1);
+      normalizationGainRef.current.gain.setTargetAtTime(
+        1.0,
+        audioContextRef.current?.currentTime || 0,
+        0.1,
+      );
     }
   }, [normalizationEnabled]);
 
@@ -642,7 +664,7 @@ function ShadowPlayerPage() {
 
       if (analyser && normGain && ctx) {
         analyser.getByteTimeDomainData(timeDomainData);
-        
+
         // Calculate Root Mean Square (RMS)
         let sumSquares = 0;
         for (let i = 0; i < timeDomainData.length; i++) {
@@ -654,13 +676,13 @@ function ShadowPlayerPage() {
         // Exponential Moving Average filter
         if (instantRMS > 0.012) {
           avgRMS = avgRMS * 0.994 + instantRMS * 0.006;
-          
+
           const targetRMS = 0.16;
           let targetGain = targetRMS / avgRMS;
-          
+
           // Safe dynamic range cap
           targetGain = Math.max(0.45, Math.min(1.85, targetGain));
-          
+
           // Smooth volume adjustments
           normGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.45);
         } else {
@@ -697,7 +719,9 @@ function ShadowPlayerPage() {
   useEffect(() => {
     const video = pipVideoRef.current;
     if (!video || !pipActive) return;
-    video.play().catch((err) => console.warn("PiP video play interrupted:", err));
+    video
+      .play()
+      .catch((err) => console.warn("PiP video play interrupted:", err));
   }, [playing, pipActive]);
 
   const togglePip = async () => {
@@ -739,7 +763,9 @@ function ShadowPlayerPage() {
     } catch (err) {
       console.error("Failed to toggle Picture-in-Picture:", err);
       setPipActive(nextState);
-      toast.error("SYSTEM ALERT: Native PiP failed, switching to local mini mode");
+      toast.error(
+        "SYSTEM ALERT: Native PiP failed, switching to local mini mode",
+      );
     }
   };
 
@@ -770,7 +796,9 @@ function ShadowPlayerPage() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Active Gate visual context
-      const currentGate = gates.find((g) => g.tracks.some((t) => t.id === activeTrack?.id)) || activeGate;
+      const currentGate =
+        gates.find((g) => g.tracks.some((t) => t.id === activeTrack?.id)) ||
+        activeGate;
       let themeColor = "#8a2be2"; // Default Purple (S-Rank)
       let borderGlow = "rgba(138, 43, 226, 0.4)";
       if (currentGate?.rank === "S-RANK" && currentGate.id === "boss") {
@@ -794,7 +822,7 @@ function ShadowPlayerPage() {
         10,
         canvas.width / 2,
         canvas.height / 2,
-        120
+        120,
       );
       radial.addColorStop(0, borderGlow.replace("0.4", "0.2"));
       radial.addColorStop(1, "rgba(0,0,0,0)");
@@ -810,7 +838,9 @@ function ShadowPlayerPage() {
       ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
       ctx.font = "bold 9px 'Orbitron', sans-serif";
       ctx.textAlign = "center";
-      const gateTag = currentGate ? `[${currentGate.rank}] ${currentGate.name}` : "SYSTEM OFFLINE";
+      const gateTag = currentGate
+        ? `[${currentGate.rank}] ${currentGate.name}`
+        : "SYSTEM OFFLINE";
       ctx.fillText(gateTag, canvas.width / 2, 28);
 
       // Title Text
@@ -844,7 +874,13 @@ function ShadowPlayerPage() {
 
       if (playing) {
         ctx.beginPath();
-        ctx.arc(playIconX, playIconY, 3 + Math.sin(Date.now() / 120) * 1.2, 0, Math.PI * 2);
+        ctx.arc(
+          playIconX,
+          playIconY,
+          3 + Math.sin(Date.now() / 120) * 1.2,
+          0,
+          Math.PI * 2,
+        );
         ctx.fill();
       } else {
         ctx.fillRect(playIconX - 4, playIconY - 4, 2, 8);
@@ -859,11 +895,18 @@ function ShadowPlayerPage() {
       const baselineY = canvas.height - 28;
 
       for (let i = 0; i < barCount; i++) {
-        const freqIndex = Math.floor(i * (frequencyData.length / barCount) * 0.65);
+        const freqIndex = Math.floor(
+          i * (frequencyData.length / barCount) * 0.65,
+        );
         const freqVal = frequencyData[freqIndex] || 0;
         const barHeight = Math.max(3, (freqVal / 255) * 45);
 
-        const barGrad = ctx.createLinearGradient(0, baselineY, 0, baselineY - barHeight);
+        const barGrad = ctx.createLinearGradient(
+          0,
+          baselineY,
+          0,
+          baselineY - barHeight,
+        );
         barGrad.addColorStop(0, themeColor);
         barGrad.addColorStop(1, "#ffffff");
 
@@ -895,17 +938,57 @@ function ShadowPlayerPage() {
       ctx.fillText(formatTimeStr(currentTime), 10, canvas.height - 14);
 
       ctx.textAlign = "right";
-      ctx.fillText(formatTimeStr(duration), canvas.width - 10, canvas.height - 14);
+      ctx.fillText(
+        formatTimeStr(duration),
+        canvas.width - 10,
+        canvas.height - 14,
+      );
 
       rafId = requestAnimationFrame(render);
     };
 
     rafId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(rafId);
-  }, [pipActive, activeTrack, playing, currentTime, duration, gates, activeGate]);
+  }, [
+    pipActive,
+    activeTrack,
+    playing,
+    currentTime,
+    duration,
+    gates,
+    activeGate,
+  ]);
 
   const handleSelectGate = (g: Gate) => {
     setActiveGateId((prev) => (prev === g.id ? null : g.id));
+  };
+
+  const playTrackSync = (track: Track) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const srcUrl = import.meta.env.PROD
+      ? `${import.meta.env.BASE_URL}media/${track.filename || `${track.id}.mp3`}`
+      : `${API_BASE}/api/stream/${encodeURIComponent(track.id)}`;
+
+    // Resolve to absolute URL to avoid duplicate loads when comparing with audio.src
+    const absoluteSrcUrl = new URL(srcUrl, window.location.href).href;
+    if (audio.src !== absoluteSrcUrl && audio.src !== srcUrl) {
+      audio.src = srcUrl;
+      audio.load();
+    }
+
+    initAudioContext();
+    if (
+      audioContextRef.current &&
+      audioContextRef.current.state === "suspended"
+    ) {
+      audioContextRef.current.resume();
+    }
+
+    audio.play().catch((err) => {
+      console.warn("playTrackSync failed:", err);
+    });
   };
 
   const handlePlay = (t: Track) => {
@@ -913,6 +996,7 @@ function ShadowPlayerPage() {
     setActiveTrack(t);
     setPlaying(true);
     setIsPlayerOpen(true);
+    playTrackSync(t);
   };
 
   const handleGlobalShuffle = () => {
@@ -928,6 +1012,7 @@ function ShadowPlayerPage() {
     setActiveTrack(randomTrack);
     setPlaying(true);
     setIsPlayerOpen(true);
+    playTrackSync(randomTrack);
     toast.success("SYSTEM SHUFFLE: All gates randomized");
   };
 
@@ -941,7 +1026,24 @@ function ShadowPlayerPage() {
       }
       return;
     }
-    setPlaying((p) => !p);
+    const nextPlaying = !playing;
+    setPlaying(nextPlaying);
+
+    const audio = audioRef.current;
+    if (audio) {
+      if (nextPlaying) {
+        initAudioContext();
+        if (
+          audioContextRef.current &&
+          audioContextRef.current.state === "suspended"
+        ) {
+          audioContextRef.current.resume();
+        }
+        audio.play().catch((err) => console.warn(err));
+      } else {
+        audio.pause();
+      }
+    }
   };
 
   const handleNext = (isAutoEnd = false) => {
@@ -990,7 +1092,8 @@ function ShadowPlayerPage() {
           } else {
             const filtered = playable.filter((t) => t.id !== activeTrack.id);
             const candidates = filtered.length > 0 ? filtered : playable;
-            nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
+            nextTrack =
+              candidates[Math.floor(Math.random() * candidates.length)];
           }
         }
       } else {
@@ -1026,6 +1129,7 @@ function ShadowPlayerPage() {
     if (nextTrack) {
       setActiveTrack(nextTrack);
       setPlaying(true);
+      playTrackSync(nextTrack);
     }
   };
 
@@ -1064,7 +1168,8 @@ function ShadowPlayerPage() {
           } else {
             const filtered = playable.filter((t) => t.id !== activeTrack.id);
             const candidates = filtered.length > 0 ? filtered : playable;
-            prevTrack = candidates[Math.floor(Math.random() * candidates.length)];
+            prevTrack =
+              candidates[Math.floor(Math.random() * candidates.length)];
           }
         }
       } else {
@@ -1093,6 +1198,7 @@ function ShadowPlayerPage() {
     if (prevTrack) {
       setActiveTrack(prevTrack);
       setPlaying(true);
+      playTrackSync(prevTrack);
     }
   };
 
@@ -1548,7 +1654,9 @@ function ShadowPlayerPage() {
                           onToggleShuffle={() => {
                             if (globalShuffleActive) {
                               setGlobalShuffleActive(false);
-                              toast.success("SYSTEM SHUFFLE: Returned to gate queue");
+                              toast.success(
+                                "SYSTEM SHUFFLE: Returned to gate queue",
+                              );
                             } else {
                               setShuffle(!shuffle);
                             }
@@ -1556,7 +1664,11 @@ function ShadowPlayerPage() {
                           repeatMode={repeatMode}
                           onToggleRepeat={() =>
                             setRepeatMode((prev) =>
-                              prev === "none" ? "all" : prev === "all" ? "one" : "none",
+                              prev === "none"
+                                ? "all"
+                                : prev === "all"
+                                  ? "one"
+                                  : "none",
                             )
                           }
                           pipActive={pipActive}

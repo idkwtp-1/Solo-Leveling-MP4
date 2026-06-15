@@ -15,7 +15,10 @@ interface ExitConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function ExitConfirmDialog({ open, onOpenChange }: ExitConfirmDialogProps) {
+export function ExitConfirmDialog({
+  open,
+  onOpenChange,
+}: ExitConfirmDialogProps) {
   const handleExit = () => {
     const pywebview = (window as any).pywebview;
     if (pywebview?.api?.close_app) {
@@ -31,7 +34,7 @@ export function ExitConfirmDialog({ open, onOpenChange }: ExitConfirmDialogProps
       <AlertDialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full border border-border/80 bg-background/95 backdrop-blur-md max-w-[420px] p-6 shadow-[0_0_50px_rgba(138,43,226,0.15)] neon-border font-sans">
         {/* Decorative Top Line/Bar */}
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
-        
+
         <AlertDialogHeader className="space-y-4">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-950/50 border border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-pulse">
             <AlertOctagon className="h-6 w-6" />
@@ -41,7 +44,8 @@ export function ExitConfirmDialog({ open, onOpenChange }: ExitConfirmDialogProps
               System Disconnection
             </AlertDialogTitle>
             <AlertDialogDescription className="font-mono text-xs text-muted-foreground tracking-wide leading-relaxed">
-              WARNING: Are you sure you want to terminate the Shadow Player system connection? Unsaved player states may be lost.
+              WARNING: Are you sure you want to terminate the Shadow Player
+              system connection? Unsaved player states may be lost.
             </AlertDialogDescription>
           </div>
         </AlertDialogHeader>

@@ -63,29 +63,42 @@ export const NEW_UNASSIGNED_TRACKS: Track[] = [
     index: "??",
     title: "TIKI TIKI (Slowed)",
     duration: "2:01",
+    endTime: 121,
   },
   {
     id: "veki-veki-slowed",
     index: "??",
     title: "VEKI VEKI (Ultra Slowed)",
     duration: "1:55",
+    endTime: 115,
   },
   {
     id: "worry-slowed",
     index: "??",
     title: "worry (ultra slowed)",
     duration: "4:15",
+    endTime: 255,
   },
   {
     id: "babydoll-perfect-girl",
     index: "??",
     title: "Babydoll X The Perfect Girl (Full Version)",
     duration: "2:14",
+    endTime: 134,
   },
   {
     id: "one-of-the-girls-mashup",
     index: "??",
     title: "One Of The Girls X Good For You (Mashup)",
     duration: "4:05",
+    endTime: 245,
+  },
+  {
+    id: "sexy-back-slowed",
+    index: "??",
+    title:
+      "Sexy Back - Justin Timberlake ( Slowed to Perfection + Reverb ) Toji / Rose Tracks /",
+    duration: "4:35",
+    endTime: 275,
   },
 ];

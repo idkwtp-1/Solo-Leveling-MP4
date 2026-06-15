@@ -92,7 +92,10 @@ function loadInventory() {
         TRACK_INVENTORY = newInventory;
       }
     } catch (err) {
-      console.error("[SLPlayer Backend] Error reading tracks_inventory.json:", err);
+      console.error(
+        "[SLPlayer Backend] Error reading tracks_inventory.json:",
+        err,
+      );
     }
   }
 }
@@ -215,7 +218,7 @@ app.get("/api/tracks", (req, res) => {
       console.error("[SLPlayer Backend] Failed to read tracks_inventory:", err);
     }
   }
-  
+
   // Fallback to memory inventory
   const fallbackList = Object.entries(TRACK_INVENTORY).map(([id, t]) => ({
     id,
@@ -316,7 +319,10 @@ app.get("/api/stream/:trackId", (req, res) => {
 });
 
 // Serve media folder statically (supporting both relative/local and base-url prefixed requests)
-app.use("/Solo-Leveling-MP4/media", express.static(path.join(__dirname, "media")));
+app.use(
+  "/Solo-Leveling-MP4/media",
+  express.static(path.join(__dirname, "media")),
+);
 app.use("/media", express.static(path.join(__dirname, "media")));
 
 // Serve static assets from frontend build folder (supporting both / and base-url prefixed requests)

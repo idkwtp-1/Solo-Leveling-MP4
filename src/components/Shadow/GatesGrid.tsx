@@ -35,7 +35,7 @@ export function GatesGrid({
                 "flex items-center gap-1.5 px-2.5 py-0.5 border rounded-sm font-mono text-[9px] tracking-wider transition-all duration-300 cursor-pointer tap-press",
                 globalShuffleActive
                   ? "border-primary text-primary bg-primary/10 shadow-[0_0_10px_oklch(0.82_0.16_220/0.3)]"
-                  : "border-border/60 text-muted-foreground hover:border-primary/60 hover:text-primary hover:shadow-[0_0_8px_oklch(0.82_0.16_220/0.15)]"
+                  : "border-border/60 text-muted-foreground hover:border-primary/60 hover:text-primary hover:shadow-[0_0_8px_oklch(0.82_0.16_220/0.15)]",
               )}
             >
               <Shuffle className="h-2.5 w-2.5" />

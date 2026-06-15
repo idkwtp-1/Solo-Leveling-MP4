@@ -149,7 +149,13 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
               stopOpacity="0"
             />
           </radialGradient>
-          <filter id={`glow-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
+          <filter
+            id={`glow-${uid}`}
+            x="-30%"
+            y="-30%"
+            width="160%"
+            height="160%"
+          >
             <feGaussianBlur stdDeviation="3.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />

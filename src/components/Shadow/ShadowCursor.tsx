@@ -2,8 +2,19 @@ import { useEffect, useRef } from "react";
 
 type Particle = {
   id: number;
-  type: "wisp" | "spark" | "orbit" | "rune" | "shockwave" | "text" | "shard"
-    | "fragment" | "soldier" | "mist" | "riftLine" | "ghost";
+  type:
+    | "wisp"
+    | "spark"
+    | "orbit"
+    | "rune"
+    | "shockwave"
+    | "text"
+    | "shard"
+    | "fragment"
+    | "soldier"
+    | "mist"
+    | "riftLine"
+    | "ghost";
   x: number;
   y: number;
   vx: number;
@@ -37,12 +48,12 @@ function drawRiftCore(
 ) {
   ctx.save();
   ctx.translate(cx, cy);
-  
+
   // Gap height breathing
   const baseRadius = isHovered ? 8 : 5;
   const breathing = Math.sin(time * 3.0) * 1.2;
   const radius = Math.max(3.0, baseRadius + breathing);
-  
+
   // 1. Draw outer glowing blue ring
   ctx.strokeStyle = "rgba(0, 210, 255, 0.85)";
   ctx.lineWidth = 1.0;
@@ -51,7 +62,7 @@ function drawRiftCore(
   ctx.beginPath();
   ctx.arc(0, 0, radius + 2, 0, Math.PI * 2);
   ctx.stroke();
-  
+
   // 2. Draw spinning dashed inner purple ring (portal runic markers)
   ctx.strokeStyle = "rgba(138, 43, 226, 0.85)";
   ctx.lineWidth = 1.2;
@@ -62,7 +73,7 @@ function drawRiftCore(
   ctx.arc(0, 0, radius, time * 2.2, time * 2.2 + Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
-  
+
   // 3. Draw deep void core
   const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius - 1);
   voidGrad.addColorStop(0, "rgba(0, 0, 0, 1)");
@@ -72,7 +83,7 @@ function drawRiftCore(
   ctx.beginPath();
   ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
   ctx.fill();
-  
+
   ctx.restore();
 }
 
@@ -88,33 +99,33 @@ function drawSoldierShape(
 ) {
   ctx.save();
   ctx.translate(x, y);
-  
+
   const scale = size / 5; // normalize base size
   const headR = 1.2 * scale;
   const bodyH = (isSnapToAttention ? 4.5 : 3.0) * scale;
   const armLen = 2.5 * scale;
-  
+
   ctx.fillStyle = `rgba(10, 15, 12, ${opacity})`; // void black fill
   ctx.strokeStyle = `hsla(${hue}, 100%, 55%, ${opacity})`; // green outline
   ctx.lineWidth = 0.8;
-  
+
   if (useShadow) {
     ctx.shadowBlur = 4;
     ctx.shadowColor = `hsla(${hue}, 100%, 50%, ${opacity})`;
   }
-  
+
   // Head
   ctx.beginPath();
   ctx.arc(0, -bodyH - headR, headR, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  
+
   // Body (spine)
   ctx.beginPath();
   ctx.moveTo(0, -bodyH);
   ctx.lineTo(0, 0);
   ctx.stroke();
-  
+
   // Arms (\O/)
   ctx.beginPath();
   const armY = -bodyH * 0.5;
@@ -130,7 +141,7 @@ function drawSoldierShape(
     ctx.lineTo(armLen * 0.7, armY - armLen * 0.7);
   }
   ctx.stroke();
-  
+
   ctx.restore();
 }
 
@@ -189,20 +200,20 @@ function drawGateSilhouette(
 ) {
   ctx.save();
   ctx.translate(x, y - h / 2);
-  
+
   ctx.strokeStyle = `hsla(${hue}, 100%, 70%, ${opacity})`;
   ctx.fillStyle = `rgba(0, 0, 0, ${opacity * 0.9})`; // Void black fill
   ctx.lineWidth = 2.0;
   ctx.shadowBlur = 10;
   ctx.shadowColor = `hsla(${hue}, 100%, 60%, ${opacity})`;
-  
+
   ctx.beginPath();
   ctx.moveTo(-w / 2, h / 2);
   ctx.lineTo(-w / 2, -h / 4);
   ctx.quadraticCurveTo(0, -h / 2 - 5, w / 2, -h / 4);
   ctx.lineTo(w / 2, h / 2);
   ctx.closePath();
-  
+
   ctx.fill();
   ctx.stroke();
   ctx.restore();
@@ -278,10 +289,10 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
     let hudGlitchFrame = 0;
     let glitchBracketIndex = -1;
     let glitchOffset = { x: 0, y: 0 };
-    
+
     // Shadow Army mode animation states
     let hoverFrames = 0;
-    
+
     // Movement angles for military formation
     let targetAngle = 0;
     let currentAngle = 0;
@@ -488,7 +499,12 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           return {
             hues: [220, 280], // Electric blue / Indigo-purple
             runes: ["⎈", "❖", "▼", "✦"],
-            text: ["GATE OPEN", "D-RANK", "THRESHOLD BREACHED", "ENTERING DUNGEON"],
+            text: [
+              "GATE OPEN",
+              "D-RANK",
+              "THRESHOLD BREACHED",
+              "ENTERING DUNGEON",
+            ],
           };
         case "sovereign":
           return {
@@ -524,14 +540,19 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
 
       const cfg = getModeConfig(modeRef.current);
 
-      const maxParticles = modeRef.current === "gate" ? 120 : modeRef.current === "beru" ? 150 : 180;
+      const maxParticles =
+        modeRef.current === "gate"
+          ? 120
+          : modeRef.current === "beru"
+            ? 150
+            : 180;
 
       // Spawn wisps/fragments/shards when moving
       if (particles.length < maxParticles) {
         const spawnCount = 1 + Math.floor(speed / 12);
         for (let i = 0; i < spawnCount; i++) {
           const jitter = () => (Math.random() - 0.5) * 8;
-          
+
           let pType: Particle["type"] = "wisp";
           if (modeRef.current === "kamish") {
             pType = "shard";
@@ -550,8 +571,12 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
               type: "fragment",
               x: mx + side + jitter() * 0.5,
               y: my + jitter() * 0.5,
-              vx: px * spd * (Math.random() < 0.5 ? -1 : 1) + (Math.random() - 0.5) * 0.3,
-              vy: py * spd * (Math.random() < 0.5 ? -1 : 1) + (Math.random() - 0.5) * 0.3,
+              vx:
+                px * spd * (Math.random() < 0.5 ? -1 : 1) +
+                (Math.random() - 0.5) * 0.3,
+              vy:
+                py * spd * (Math.random() < 0.5 ? -1 : 1) +
+                (Math.random() - 0.5) * 0.3,
               life: 0,
               maxLife: 30 + Math.random() * 20,
               size: 2 + Math.random() * 3, // width (2 to 5px)
@@ -568,7 +593,10 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
               vy: -dy * 0.08 + (Math.random() - 0.5) * 0.9 - 0.4,
               life: 0,
               maxLife: 40 + Math.random() * 30,
-              size: pType === "shard" ? 4 + Math.random() * 4 : 7 + Math.random() * 8,
+              size:
+                pType === "shard"
+                  ? 4 + Math.random() * 4
+                  : 7 + Math.random() * 8,
               hue: Math.random() < 0.65 ? cfg.hues[0] : cfg.hues[1],
               rotation: (Math.random() - 0.5) * 0.4,
               rotationSpeed: (Math.random() - 0.5) * 0.03,
@@ -578,7 +606,12 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
       }
 
       // Spawn high-velocity electric sparks when moving fast (only if NOT gate or beru modes)
-      if (speed > 5 && particles.length < maxParticles && modeRef.current !== "gate" && modeRef.current !== "beru") {
+      if (
+        speed > 5 &&
+        particles.length < maxParticles &&
+        modeRef.current !== "gate" &&
+        modeRef.current !== "beru"
+      ) {
         const sparkCount = Math.floor(speed / 6);
         for (let i = 0; i < sparkCount; i++) {
           const angle = Math.random() * Math.PI * 2;
@@ -688,7 +721,6 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           hue: cfg.hues[1],
           text,
         });
-
       } else if (modeRef.current === "beru") {
         // 1. Instant 8 shadow soldier particles burst outward in all directions
         for (let i = 0; i < 8; i++) {
@@ -779,7 +811,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           hue: cfg.hues[0],
           text: "ARISE",
         });
-        
+
         particles.push({
           id: Math.random(),
           type: "text",
@@ -794,7 +826,6 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           text: "YES MY LORD",
           delay: 8,
         });
-
       } else {
         particles.push({
           id: Math.random(),
@@ -927,7 +958,12 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
       const cfg = getModeConfig(modeRef.current);
 
       // Always-on idle wisps (suppressed for gate and beru modes)
-      if (cursorVisible && Math.random() < 0.28 && modeRef.current !== "gate" && modeRef.current !== "beru") {
+      if (
+        cursorVisible &&
+        Math.random() < 0.28 &&
+        modeRef.current !== "gate" &&
+        modeRef.current !== "beru"
+      ) {
         particles.push({
           id: Math.random(),
           type: modeRef.current === "kamish" ? "shard" : "wisp",
@@ -979,7 +1015,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           // Standard orbiting dots (or rectangular fragments for gate)
           const maxOrbits = modeRef.current === "gate" ? 8 : 24;
           const orbitCount = particles.filter((p) => p.type === "orbit").length;
-          
+
           if (orbitCount < maxOrbits && Math.random() < 0.18) {
             particles.push({
               id: Math.random(),
@@ -1004,7 +1040,11 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
       }
 
       // Idle runic symbols (suppressed for beru mode)
-      if (cursorVisible && Math.random() < 0.035 && modeRef.current !== "beru") {
+      if (
+        cursorVisible &&
+        Math.random() < 0.035 &&
+        modeRef.current !== "beru"
+      ) {
         particles.push({
           id: Math.random(),
           type: "rune",
@@ -1030,7 +1070,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
       // Draw and update particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        
+
         // Handle delayed spawning
         if (p.delay !== undefined && p.delay > 0) {
           p.delay--;
@@ -1040,8 +1080,11 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
         p.life++;
         // Lifecycle cleanups
         const isDead = p.life > p.maxLife;
-        const isMismatchedOrbit = p.type === "orbit" && p.slotIndex !== undefined && modeRef.current !== "beru";
-        
+        const isMismatchedOrbit =
+          p.type === "orbit" &&
+          p.slotIndex !== undefined &&
+          modeRef.current !== "beru";
+
         if (isDead || isMismatchedOrbit) {
           if (p.type === "soldier" && p.targetY === undefined) {
             // Spawn mist trail upon standard soldier decay
@@ -1082,12 +1125,12 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           p.vy *= 0.92;
           p.x += p.vx + Math.sin(p.life * 0.2) * 0.4;
           p.y += p.vy;
-          
+
           let alpha = t;
           if (p.maxLife - p.life < 15) {
             alpha = (Math.sin(p.life * 1.5) * 0.5 + 0.5) * t;
           }
-          
+
           ctx.save();
           ctx.translate(p.x, p.y);
           const w = p.size;
@@ -1110,7 +1153,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           const progress = p.life / p.maxLife;
           let spdScale = 1.0;
           if (progress < 0.4) {
-            spdScale = Math.max(0, 1 - (progress / 0.4));
+            spdScale = Math.max(0, 1 - progress / 0.4);
           } else {
             spdScale = 0;
           }
@@ -1126,7 +1169,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
             p.x += p.vx * spdScale;
             p.y += p.vy * spdScale;
           }
-          
+
           drawSoldierShape(ctx, p.x, p.y, p.size, t * 0.85, p.hue, isHovered);
         } else if (p.type === "mist") {
           p.x += p.vx;
@@ -1191,11 +1234,11 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
               p.orbitSpeed += Math.sin(p.life * 0.08) * 0.002;
               p.angle += p.orbitSpeed;
               p.orbitRadius *= 0.995;
-              
+
               if (Math.random() < 0.012) {
                 p.angle += Math.PI; // glitch teleport to opposite side
               }
-              
+
               const rawX = Math.cos(p.angle) * p.orbitRadius;
               const rawY = Math.sin(p.angle) * (p.orbitRadius * 0.12); // low Y scale = flat plane
               const tiltAngle = Math.PI / 12;
@@ -1205,19 +1248,25 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
               p.y =
                 cursorY +
                 (rawX * Math.sin(tiltAngle) + rawY * Math.cos(tiltAngle));
-            } else if (p.slotIndex !== undefined && modeRef.current === "beru") {
+            } else if (
+              p.slotIndex !== undefined &&
+              modeRef.current === "beru"
+            ) {
               // Military Formation Escort
-              const cursorSpeed = Math.min(25, Math.hypot(mx - lastTickMx, my - lastTickMy));
+              const cursorSpeed = Math.min(
+                25,
+                Math.hypot(mx - lastTickMx, my - lastTickMy),
+              );
               const converge = cursorSpeed < 1.5 ? 0.55 : 1.0;
-              
+
               const cosA = Math.cos(currentAngle);
               const sinA = Math.sin(currentAngle);
               const perpX = -sinA;
               const perpY = cosA;
-              
+
               let ox = 0;
               let oy = 0;
-              
+
               switch (p.slotIndex) {
                 case 0: // Vanguard (Point)
                   ox = cosA * 26 * converge;
@@ -1244,17 +1293,18 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
                   oy = -sinA * 30 * converge;
                   break;
               }
-              
+
               // Hover Target Lock Surround
               if (isHovered && p.slotIndex >= 3) {
-                const angleOffset = ((p.slotIndex - 3) * Math.PI * 2) / 3 + angleInner * 1.5;
+                const angleOffset =
+                  ((p.slotIndex - 3) * Math.PI * 2) / 3 + angleInner * 1.5;
                 ox = Math.cos(angleOffset) * 22;
                 oy = Math.sin(angleOffset) * 22;
               }
-              
+
               const tx = cursorX + ox;
               const ty = cursorY + oy;
-              
+
               const followLag = cursorSpeed > 10 ? 0.09 : 0.16;
               p.x += (tx - p.x) * followLag;
               p.y += (ty - p.y) * followLag;
@@ -1356,7 +1406,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
               target.x,
               target.y,
               target.hue,
-              0.20 + Math.random() * 0.25,
+              0.2 + Math.random() * 0.25,
             );
           }
         }
@@ -1439,45 +1489,123 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
             // TL (0)
             let ox = gIndex === 0 ? gOffset.x : 0;
             let oy = gIndex === 0 ? gOffset.y : 0;
-            drawCornerBracket(c, -rSize + ox, -rSize + oy, armLen, 1, 1, col, 1.2, 8);
+            drawCornerBracket(
+              c,
+              -rSize + ox,
+              -rSize + oy,
+              armLen,
+              1,
+              1,
+              col,
+              1.2,
+              8,
+            );
             // TR (1)
             ox = gIndex === 1 ? gOffset.x : 0;
             oy = gIndex === 1 ? gOffset.y : 0;
-            drawCornerBracket(c, rSize + ox, -rSize + oy, armLen, -1, 1, col, 1.2, 8);
+            drawCornerBracket(
+              c,
+              rSize + ox,
+              -rSize + oy,
+              armLen,
+              -1,
+              1,
+              col,
+              1.2,
+              8,
+            );
             // BL (2)
             ox = gIndex === 2 ? gOffset.x : 0;
             oy = gIndex === 2 ? gOffset.y : 0;
-            drawCornerBracket(c, -rSize + ox, rSize + oy, armLen, 1, -1, col, 1.2, 8);
+            drawCornerBracket(
+              c,
+              -rSize + ox,
+              rSize + oy,
+              armLen,
+              1,
+              -1,
+              col,
+              1.2,
+              8,
+            );
             // BR (3)
             ox = gIndex === 3 ? gOffset.x : 0;
             oy = gIndex === 3 ? gOffset.y : 0;
-            drawCornerBracket(c, rSize + ox, rSize + oy, armLen, -1, -1, col, 1.2, 8);
+            drawCornerBracket(
+              c,
+              rSize + ox,
+              rSize + oy,
+              armLen,
+              -1,
+              -1,
+              col,
+              1.2,
+              8,
+            );
           };
 
-          drawFourBrackets(ctx, reticleSize, hudBaseColor, glitchBracketIndex, glitchOffset);
+          drawFourBrackets(
+            ctx,
+            reticleSize,
+            hudBaseColor,
+            glitchBracketIndex,
+            glitchOffset,
+          );
 
           // Draw chromatic aberration split ghost
           if (glitchBracketIndex !== -1) {
-            let ox = glitchBracketIndex === 0 ? -reticleSize : glitchBracketIndex === 1 ? reticleSize : glitchBracketIndex === 2 ? -reticleSize : reticleSize;
-            let oy = glitchBracketIndex === 0 ? -reticleSize : glitchBracketIndex === 1 ? -reticleSize : glitchBracketIndex === 2 ? reticleSize : reticleSize;
-            let dirX = glitchBracketIndex === 0 || glitchBracketIndex === 2 ? 1 : -1;
-            let dirY = glitchBracketIndex === 0 || glitchBracketIndex === 1 ? 1 : -1;
-            drawCornerBracket(ctx, ox, oy, armLen, dirX, dirY, "rgba(0, 255, 255, 0.35)", 1.2, 4);
+            let ox =
+              glitchBracketIndex === 0
+                ? -reticleSize
+                : glitchBracketIndex === 1
+                  ? reticleSize
+                  : glitchBracketIndex === 2
+                    ? -reticleSize
+                    : reticleSize;
+            let oy =
+              glitchBracketIndex === 0
+                ? -reticleSize
+                : glitchBracketIndex === 1
+                  ? -reticleSize
+                  : glitchBracketIndex === 2
+                    ? reticleSize
+                    : reticleSize;
+            let dirX =
+              glitchBracketIndex === 0 || glitchBracketIndex === 2 ? 1 : -1;
+            let dirY =
+              glitchBracketIndex === 0 || glitchBracketIndex === 1 ? 1 : -1;
+            drawCornerBracket(
+              ctx,
+              ox,
+              oy,
+              armLen,
+              dirX,
+              dirY,
+              "rgba(0, 255, 255, 0.35)",
+              1.2,
+              4,
+            );
           }
 
           // Scan line lines scrolling down inside targeting box
           ctx.save();
           ctx.beginPath();
-          ctx.rect(-reticleSize, -reticleSize, reticleSize * 2, reticleSize * 2);
+          ctx.rect(
+            -reticleSize,
+            -reticleSize,
+            reticleSize * 2,
+            reticleSize * 2,
+          );
           ctx.clip();
-          
+
           ctx.strokeStyle = `rgba(0, 210, 255, 0.10)`;
           ctx.lineWidth = 0.6;
-          
+
           const boxHeight = reticleSize * 2;
           const spacing = boxHeight / 3;
           for (let s = 0; s < 3; s++) {
-            const ly = -reticleSize + ((scanLineOffset + s * spacing) % boxHeight);
+            const ly =
+              -reticleSize + ((scanLineOffset + s * spacing) % boxHeight);
             ctx.beginPath();
             ctx.moveTo(-reticleSize, ly);
             ctx.lineTo(reticleSize, ly);
@@ -1494,7 +1622,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           const jR = 5 + (Math.random() - 0.5) * 1.0;
           const jT = 5 + (Math.random() - 0.5) * 1.0;
           const jB = 5 + (Math.random() - 0.5) * 1.0;
-          
+
           const gradX = ctx.createLinearGradient(-jL, 0, jR, 0);
           gradX.addColorStop(0, "rgba(0, 210, 255, 0.2)");
           gradX.addColorStop(0.5, "rgba(255, 255, 255, 1)");
@@ -1504,7 +1632,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.moveTo(-jL, 0);
           ctx.lineTo(jR, 0);
           ctx.stroke();
-          
+
           const gradY = ctx.createLinearGradient(0, -jT, 0, jB);
           gradY.addColorStop(0, "rgba(0, 210, 255, 0.2)");
           gradY.addColorStop(0.5, "rgba(255, 255, 255, 1)");
@@ -1515,7 +1643,6 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.lineTo(0, jB);
           ctx.stroke();
           ctx.restore();
-
         } else if (modeRef.current === "beru") {
           // Tactical corner brackets (keep original angular corners)
           ctx.beginPath();
@@ -1537,20 +1664,21 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.save();
           const hexRadius = reticleSize * 0.55;
           const sides = 6;
-          const activeDot = Math.floor(angleInner * (isHovered ? 8.0 : 2.5)) % 6;
-          
+          const activeDot =
+            Math.floor(angleInner * (isHovered ? 8.0 : 2.5)) % 6;
+
           for (let j = 0; j < sides; j++) {
             const angle = angleInner + (j * Math.PI * 2) / sides;
             const x = Math.cos(angle) * hexRadius;
             const y = Math.sin(angle) * hexRadius;
-            
+
             let dotAlpha = 0.25;
             if (isHovered) {
               dotAlpha = 0.55 + Math.sin(angleInner * 12 + j) * 0.4;
             } else if (j === activeDot) {
               dotAlpha = 0.95;
             }
-            
+
             ctx.fillStyle = `rgba(0, 255, 65, ${dotAlpha})`;
             ctx.shadowBlur = j === activeDot || isHovered ? 6 : 2;
             ctx.shadowColor = "rgba(0, 255, 65, 0.8)";
@@ -1559,7 +1687,6 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
             ctx.fill();
           }
           ctx.restore();
-
         } else {
           // Circular brackets for Monarch / Kamish / Sovereign
           ctx.beginPath();
@@ -1599,7 +1726,12 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.strokeStyle = hudSecColor;
           ctx.lineWidth = 0.85;
           ctx.beginPath();
-          const sides = modeRef.current === "sovereign" ? 8 : modeRef.current === "kamish" ? 3 : 6;
+          const sides =
+            modeRef.current === "sovereign"
+              ? 8
+              : modeRef.current === "kamish"
+                ? 3
+                : 6;
           for (let j = 0; j < sides; j++) {
             const angle = angleInner + (j * Math.PI * 2) / sides;
             const x = Math.cos(angle) * (reticleSize * 0.55);
@@ -1647,15 +1779,22 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
           ctx.stroke();
 
           let label = "SYSTEM LOCK // ACTIVE";
-          if (modeRef.current === "beru") label = "SOLDIER COMMAND // TARGET ACQUIRED";
-          else if (modeRef.current === "gate") label = "SYSTEM: THRESHOLD LOCKED";
+          if (modeRef.current === "beru")
+            label = "SOLDIER COMMAND // TARGET ACQUIRED";
+          else if (modeRef.current === "gate")
+            label = "SYSTEM: THRESHOLD LOCKED";
 
           ctx.fillText(label, reticleSize + 11, 2);
 
           if (modeRef.current === "gate") {
             const ranks = ["D", "C", "B", "A", "S"];
-            const currentRank = ranks[Math.floor(Date.now() / 2000) % ranks.length];
-            ctx.fillText(`UNKNOWN RANK GATE [${currentRank}-RANK]`, reticleSize + 11, 10);
+            const currentRank =
+              ranks[Math.floor(Date.now() / 2000) % ranks.length];
+            ctx.fillText(
+              `UNKNOWN RANK GATE [${currentRank}-RANK]`,
+              reticleSize + 11,
+              10,
+            );
           }
         }
 
@@ -1683,7 +1822,8 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
         let color = "rgba(138, 43, 226, 0.9)";
         if (modeRef.current === "kamish") color = "rgba(255, 215, 0, 0.95)";
         else if (modeRef.current === "gate") color = "rgba(0, 0, 255, 0.85)";
-        else if (modeRef.current === "sovereign") color = "rgba(255, 215, 0, 0.95)";
+        else if (modeRef.current === "sovereign")
+          color = "rgba(255, 215, 0, 0.95)";
         else if (modeRef.current === "beru") color = "rgba(0, 255, 65, 0.95)";
 
         if (modeRef.current === "kamish") {
