@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: number;
-  glow?: "blue" | "purple";
+  glow?: "blue" | "purple" | "red";
   children: ReactNode;
 };
 
@@ -15,9 +15,11 @@ export function HexButton({
   ...rest
 }: Props) {
   const glowShadow =
-    glow === "purple"
-      ? "0 0 14px oklch(0.5 0.27 295 / 0.8), 0 0 32px oklch(0.5 0.27 295 / 0.45)"
-      : "0 0 14px oklch(0.82 0.16 220 / 0.8), 0 0 32px oklch(0.82 0.16 220 / 0.45)";
+    glow === "red"
+      ? "0 0 14px oklch(0.6 0.25 20 / 0.8), 0 0 32px oklch(0.6 0.25 20 / 0.45)"
+      : glow === "purple"
+        ? "0 0 14px oklch(0.5 0.27 295 / 0.8), 0 0 32px oklch(0.5 0.27 295 / 0.45)"
+        : "0 0 14px oklch(0.82 0.16 220 / 0.8), 0 0 32px oklch(0.82 0.16 220 / 0.45)";
   return (
     <div
       className="relative inline-flex tap-press"
@@ -32,9 +34,11 @@ export function HexButton({
         className="absolute inset-0 hex-clip"
         style={{
           background:
-            glow === "purple"
-              ? "linear-gradient(135deg, oklch(0.5 0.27 295), oklch(0.82 0.16 220))"
-              : "linear-gradient(135deg, oklch(0.82 0.16 220), oklch(0.5 0.27 295))",
+            glow === "red"
+              ? "linear-gradient(135deg, oklch(0.6 0.25 20), oklch(0.4 0.25 15))"
+              : glow === "purple"
+                ? "linear-gradient(135deg, oklch(0.5 0.27 295), oklch(0.82 0.16 220))"
+                : "linear-gradient(135deg, oklch(0.82 0.16 220), oklch(0.5 0.27 295))",
         }}
       />
       {/* inner fill */}
@@ -42,8 +46,8 @@ export function HexButton({
       <button
         {...rest}
         className={cn(
-          "relative z-10 grid place-items-center w-full h-full text-primary hex-clip",
-          "hover:text-foreground transition-colors",
+          "relative z-10 grid place-items-center w-full h-full hex-clip transition-colors",
+          glow === "red" ? "text-red-500 hover:text-red-300" : "text-primary hover:text-foreground",
           className,
         )}
       >

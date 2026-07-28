@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { execFile, spawn, exec, execSync } from "child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,7 +44,7 @@ app.use(
 // Express rate limiter to prevent flooding or asset scraping
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // limit each IP to 300 requests per windowMs
+  max: 100000, // Increased limit because local polling triggers it quickly
   message: "Too many requests from this IP, please try again after 15 minutes",
   standardHeaders: true,
   legacyHeaders: false,
@@ -180,6 +181,281 @@ app.get("/api/gates/:gateId", (req, res) => {
     return res.status(404).json({ error: "Gate not found" });
   }
   res.json(gate);
+});
+
+// YouTube Search & Download State
+const ytdlpPath = path.join(__dirname, "yt-dlp.exe");
+const mediaDir = path.join(__dirname, "media");
+const activeDownloads = {};
+
+function formatDuration(secStr) {
+  const seconds = parseInt(secStr, 10);
+  if (isNaN(seconds)) return "??";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Refresh PATH environment variables in node so child processes can locate Gyan.FFmpeg (just like in download_and_sync_all.js)
+try {
+  const freshPath = execSync(
+    "powershell \"[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')\"",
+  )
+    .toString()
+    .trim();
+  process.env.PATH = freshPath;
+} catch (err) {
+  console.error("[SLPlayer Backend] Failed to refresh PATH environment variable:", err.message);
+}
+
+// 1. YouTube Search
+app.get("/api/youtube/search", (req, res) => {
+  const query = req.query.q;
+  if (!query) {
+    return res.status(400).json({ error: "Missing search query" });
+  }
+
+  execFile(
+    ytdlpPath,
+    [`ytsearch20:${query}`, "--dump-json", "--flat-playlist"],
+    {
+      maxBuffer: 1024 * 1024 * 10,
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUTF8: "1",
+      },
+    },
+    (error, stdout, stderr) => {
+      if (error) {
+        console.error("[SLPlayer Backend] yt-dlp search error:", error);
+        return res.status(500).json({ error: "Failed to search YouTube" });
+      }
+
+      const results = [];
+      const lines = stdout.trim().split("\n");
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const item = JSON.parse(line);
+          const duration = item.duration ? Math.floor(item.duration) : 0;
+          const mins = Math.floor(duration / 60);
+          const secs = duration % 60;
+          const durationStr = `${mins}:${String(secs).padStart(2, "0")}`;
+
+          results.push({
+            id: item.id,
+            title: item.title,
+            channel: item.channel || item.uploader || "Unknown",
+            duration: durationStr,
+            durationSeconds: duration,
+            thumbnail: item.thumbnails && item.thumbnails.length > 0
+              ? item.thumbnails[item.thumbnails.length - 1].url
+              : null,
+            url: `https://www.youtube.com/watch?v=${item.id}`
+          });
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+      res.json(results);
+    }
+  );
+});
+
+// 2. Active downloads list/status
+app.get("/api/youtube/downloads", (req, res) => {
+  res.json(Object.values(activeDownloads));
+});
+
+// Helper function to auto Git Sync
+function runGitSync(title) {
+  console.log(`[SLPlayer Backend] Starting Git Sync for track: ${title}`);
+  const gitDir = path.join(__dirname, "..");
+  exec('git add -A && git commit -m "feat: add track ' + title.replace(/"/g, '\\"') + '" && git push', { cwd: gitDir }, (error, stdout, stderr) => {
+    if (error) {
+      console.error("[SLPlayer Backend] Git Sync failed:", error);
+    } else {
+      console.log("[SLPlayer Backend] Git Sync completed successfully!");
+    }
+  });
+}
+
+// 3. YouTube Download
+app.post("/api/youtube/download", express.json(), (req, res) => {
+  const { videoId, title: requestedTitle } = req.body;
+  if (!videoId) {
+    return res.status(400).json({ error: "Missing videoId" });
+  }
+
+  if (activeDownloads[videoId]) {
+    return res.json({ message: "Download already in progress or completed", status: activeDownloads[videoId] });
+  }
+
+  const titlePlaceholder = requestedTitle || videoId;
+  activeDownloads[videoId] = {
+    videoId,
+    title: titlePlaceholder,
+    status: "queued",
+    progress: 0,
+  };
+
+  res.json({ message: "Download started", status: activeDownloads[videoId] });
+
+  // Run in background
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const args = [
+    "-f",
+    "ba[ext=m4a]/ba",
+    "--restrict-filenames",
+    "--no-simulate",
+    "--no-post-overwrites",
+    "-o",
+    path.join(mediaDir, "%(title)s.%(ext)s"),
+    "--print",
+    "METADATA_TITLE:%(title)s",
+    "--print",
+    "METADATA_DURATION:%(duration)s",
+    "--print",
+    "METADATA_FILENAME:%(filename)s",
+    url,
+  ];
+
+  activeDownloads[videoId].status = "downloading";
+  console.log(`[SLPlayer Backend] Starting download of ${url}`);
+
+  let child;
+  try {
+    child = spawn(ytdlpPath, args, {
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUTF8: "1",
+      },
+    });
+  } catch (err) {
+    console.error("[SLPlayer Backend] Synchronous spawn error:", err);
+    activeDownloads[videoId].status = "failed";
+    activeDownloads[videoId].error = "Failed to launch yt-dlp";
+    return;
+  }
+
+  let stdoutData = "";
+  let stderrData = "";
+
+  child.on("error", (err) => {
+    console.error("[SLPlayer Backend] yt-dlp spawn error event:", err);
+    activeDownloads[videoId].status = "failed";
+    activeDownloads[videoId].error = "yt-dlp process error";
+  });
+
+  child.stdout.on("data", (data) => {
+    const str = data.toString();
+    stdoutData += str;
+
+    // Parse progress percentage, speed, and ETA
+    // Example: [download]  15.2% of  8.52MiB at    1.50MiB/s ETA 00:04
+    const progressMatch = str.match(/\[download\]\s+([\d.]+)%(?:.*?at\s+([^\s]+)\s+ETA\s+([^\s]+))?/);
+    if (progressMatch) {
+      const percentage = parseFloat(progressMatch[1]);
+      if (!isNaN(percentage)) {
+        activeDownloads[videoId].progress = percentage;
+        activeDownloads[videoId].status = "downloading";
+        if (progressMatch[2] && progressMatch[3]) {
+          activeDownloads[videoId].speed = progressMatch[2];
+          activeDownloads[videoId].eta = progressMatch[3];
+        }
+      }
+    }
+  });
+
+  child.stderr.on("data", (data) => {
+    stderrData += data.toString();
+  });
+
+  child.on("close", (code) => {
+    if (code !== 0) {
+      console.error(`[SLPlayer Backend] yt-dlp failed with code ${code}. Stderr: ${stderrData}`);
+      activeDownloads[videoId].status = "failed";
+      activeDownloads[videoId].error = "yt-dlp failed to download audio";
+      return;
+    }
+
+    // Process output metadata
+    let title = "";
+    let durationSecs = "";
+    let absoluteFilePath = "";
+
+    const lines = stdoutData.split("\n").map(l => l.trim());
+    for (const line of lines) {
+      if (line.startsWith("METADATA_TITLE:")) {
+        title = line.substring("METADATA_TITLE:".length);
+      } else if (line.startsWith("METADATA_DURATION:")) {
+        durationSecs = line.substring("METADATA_DURATION:".length);
+      } else if (line.startsWith("METADATA_FILENAME:")) {
+        absoluteFilePath = line.substring("METADATA_FILENAME:".length);
+      }
+    }
+
+    if (!title || !durationSecs || !absoluteFilePath) {
+      console.error("[SLPlayer Backend] Unexpected output format from download:", stdoutData);
+      activeDownloads[videoId].status = "failed";
+      activeDownloads[videoId].error = "Could not parse download details";
+      return;
+    }
+
+    const relativeFileName = path.basename(absoluteFilePath);
+
+    const baseName = path.basename(relativeFileName, path.extname(relativeFileName));
+    const trackId = baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    activeDownloads[videoId].title = title;
+    activeDownloads[videoId].status = "analyzing";
+    activeDownloads[videoId].progress = 100;
+
+    // Read and update registry
+    let inventory = [];
+    if (fs.existsSync(INVENTORY_PATH)) {
+      try {
+        inventory = JSON.parse(fs.readFileSync(INVENTORY_PATH, "utf-8"));
+      } catch (e) {
+        console.error("[SLPlayer Backend] Failed to read inventory:", e);
+      }
+    }
+
+    const existingIds = new Set(inventory.map((t) => t.id));
+    if (!existingIds.has(trackId)) {
+      inventory.push({
+        id: trackId,
+        filename: relativeFileName,
+        title: title,
+        duration: formatDuration(durationSecs),
+      });
+      try {
+        fs.writeFileSync(INVENTORY_PATH, JSON.stringify(inventory, null, 2));
+      } catch (e) {
+        console.error("[SLPlayer Backend] Failed to write inventory:", e);
+      }
+    }
+
+    // Trigger beat drop analysis
+    console.log(`[SLPlayer Backend] Running beat drop analysis for ${trackId}`);
+    execFile("python", [path.join(__dirname, "analyze_drops.py")], (err, stdout, stderr) => {
+      if (err) {
+        console.error("[SLPlayer Backend] Beat drop analysis failed:", err);
+      } else {
+        console.log("[SLPlayer Backend] Beat drop analysis complete");
+      }
+
+      activeDownloads[videoId].status = "completed";
+
+      // Trigger automatic Git Sync!
+      runGitSync(title);
+    });
+  });
 });
 
 // Assignments endpoints

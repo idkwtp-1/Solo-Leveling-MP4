@@ -1,6 +1,6 @@
 import { ARTIST, type Gate, type Track } from "@/lib/shadow-data";
 import { cn } from "@/lib/utils";
-import { Play } from "lucide-react";
+import { Play, Shuffle } from "lucide-react";
 
 type Props = {
   gate: Gate;
@@ -13,6 +13,7 @@ type Props = {
   onUnassign?: (trackId: string) => void;
   gates?: Gate[];
   onClose?: () => void;
+  onGateShuffle?: () => void;
 };
 
 export function TrackList({
@@ -26,6 +27,7 @@ export function TrackList({
   onUnassign,
   gates,
   onClose,
+  onGateShuffle,
 }: Props) {
   return (
     <section className="space-y-3">
@@ -33,10 +35,19 @@ export function TrackList({
         <h2 className="font-display text-xs sm:text-sm tracking-[0.3em] text-primary text-glow-blue">
           GATE OPEN: <span className="text-foreground">{gate.name}</span>
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] text-muted-foreground">
             {gate.code}
           </span>
+          {onGateShuffle && (
+            <button
+              onClick={onGateShuffle}
+              title="Shuffle this gate's playlist"
+              className="flex items-center gap-1 font-mono text-[9px] border border-border/40 hover:border-primary/50 text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer tap-press"
+            >
+              <Shuffle className="h-2.5 w-2.5" />
+            </button>
+          )}
           {onClose && (
             <button
               onClick={onClose}

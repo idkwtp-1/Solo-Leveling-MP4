@@ -329,4 +329,18 @@
     animation: marquee 16s linear infinite;
     padding-left: 100%;
   }
+
+  @keyframes monarch-pulse {
+    0%, 100% {
+      border-color: rgba(239, 68, 68, 0.4);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.3), inset 0 0 12px rgba(239, 68, 68, 0.15);
+    }
+    50% {
+      border-color: rgba(239, 68, 68, 0.85);
+      box-shadow: 0 0 36px rgba(239, 68, 68, 0.6), inset 0 0 18px rgba(239, 68, 68, 0.35);
+    }
+  }
+  .animate-monarch-pulse {
+    animation: monarch-pulse 2s ease-in-out infinite;
+  }
 }

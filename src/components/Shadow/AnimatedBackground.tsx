@@ -4,6 +4,9 @@ type Props = {
   intensity: string;
   audioRef?: React.RefObject<HTMLAudioElement | null>;
   beatDrops?: number[];
+  gateId?: string | null;
+  ariseTrigger?: number;
+  monarchMode?: boolean;
 };
 
 type Particle = {
@@ -47,6 +50,74 @@ interface LightningSegment {
   y2: number;
   width: number;
 }
+
+const getGateColors = (id: string | null | undefined, isMonarchMode: boolean) => {
+  if (isMonarchMode) {
+    // Overdrive mix: Crimson red and deep violet
+    return {
+      primary: "rgba(220, 38, 38, 1.0)",     // red-600
+      secondary: "rgba(147, 51, 234, 1.0)",   // purple-600
+      glowPrimary: "rgba(220, 38, 38, 0.35)",
+      glowSecondary: "rgba(147, 51, 234, 0.35)"
+    };
+  }
+
+  switch (id) {
+    case "boss":
+      return {
+        primary: "rgba(239, 68, 68, 1.0)",     // red-500
+        secondary: "rgba(153, 27, 27, 1.0)",   // red-800
+        glowPrimary: "rgba(239, 68, 68, 0.35)",
+        glowSecondary: "rgba(153, 27, 27, 0.2)"
+      };
+    case "hype":
+      return {
+        primary: "rgba(0, 210, 255, 1.0)",     // system-cyan
+        secondary: "rgba(59, 130, 246, 1.0)",   // blue-500
+        glowPrimary: "rgba(0, 210, 255, 0.35)",
+        glowSecondary: "rgba(59, 130, 246, 0.2)"
+      };
+    case "chill":
+      return {
+        primary: "rgba(59, 130, 246, 1.0)",     // blue-500
+        secondary: "rgba(30, 58, 138, 1.0)",    // blue-900
+        glowPrimary: "rgba(59, 130, 246, 0.3)",
+        glowSecondary: "rgba(30, 58, 138, 0.25)"
+      };
+    case "monarch":
+      return {
+        primary: "rgba(138, 43, 226, 1.0)",     // violet
+        secondary: "rgba(75, 0, 130, 1.0)",     // indigo
+        glowPrimary: "rgba(138, 43, 226, 0.35)",
+        glowSecondary: "rgba(75, 0, 130, 0.2)"
+      };
+    case "dungeon":
+      return {
+        primary: "rgba(34, 197, 94, 1.0)",      // green-500
+        secondary: "rgba(21, 128, 61, 1.0)",    // green-700
+        glowPrimary: "rgba(34, 197, 94, 0.3)",
+        glowSecondary: "rgba(21, 128, 61, 0.2)"
+      };
+    case "awaken":
+      return {
+        primary: "rgba(234, 179, 8, 1.0)",      // yellow-500
+        secondary: "rgba(161, 98, 7, 1.0)",     // yellow-700
+        glowPrimary: "rgba(234, 179, 8, 0.35)",
+        glowSecondary: "rgba(161, 98, 7, 0.2)"
+      };
+    default:
+      return {
+        primary: "rgba(0, 210, 255, 1.0)",
+        secondary: "rgba(138, 43, 226, 1.0)",
+        glowPrimary: "rgba(0, 210, 255, 0.35)",
+        glowSecondary: "rgba(138, 43, 226, 0.35)"
+      };
+  }
+};
+
+const replaceAlpha = (rgbaStr: string, alpha: number) => {
+  return rgbaStr.replace("1.0)", `${alpha})`).replace(", 1)", `, ${alpha})`);
+};
 
 function generateLightningBolt(
   x1: number,
@@ -103,7 +174,14 @@ function generateLightningBolt(
   return segments;
 }
 
-export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
+export function AnimatedBackground({
+  intensity,
+  audioRef,
+  beatDrops,
+  gateId,
+  ariseTrigger,
+  monarchMode,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -135,6 +213,11 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
     } else if (intensity === "intense") {
       maxParticles = 120;
       opacityMultiplier = 1.0;
+    }
+
+    if (monarchMode) {
+      maxParticles = Math.floor(maxParticles * 1.5);
+      opacityMultiplier = Math.min(1.0, opacityMultiplier * 1.3);
     }
 
     const particles: Particle[] = [];
@@ -180,7 +263,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
       }
     }
 
-    // Initialize particles
+    // Initialize ambient particles
     for (let i = 0; i < maxParticles; i++) {
       const type = Math.random() < 0.65 ? "mist" : "rune";
       particles.push({
@@ -210,33 +293,65 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
       });
     }
 
+    // --- ARISE BURST SHADOW PARTICLES ---
+    const isAriseBurst = ariseTrigger !== undefined && ariseTrigger > 0;
+    const spawnBurstCount = isAriseBurst ? 45 : 0;
+    for (let i = 0; i < spawnBurstCount; i++) {
+      const type = Math.random() < 0.7 ? "mist" : "rune";
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: window.innerHeight + 20 + Math.random() * 80,
+        vx: (Math.random() - 0.5) * 1.8,
+        vy: -4 - Math.random() * 7,
+        size:
+          type === "mist" ? 60 + Math.random() * 110 : 12 + Math.random() * 10,
+        alpha: 0,
+        baseAlpha:
+          type === "mist"
+            ? 0.4 + Math.random() * 0.4
+            : 0.6 + Math.random() * 0.4,
+        speedMultiplier: 1.5 + Math.random() * 1.0,
+        type,
+        char:
+          type === "rune"
+            ? runesList[Math.floor(Math.random() * runesList.length)]
+            : undefined,
+        rotation: type === "rune" ? Math.random() * Math.PI * 2 : undefined,
+        rotationSpeed:
+          type === "rune" ? (Math.random() - 0.5) * 0.08 : undefined,
+      });
+    }
+
     let raf = 0;
     let t = 0;
     const frequencyData = new Uint8Array(128);
 
     // --- OFFSCREEN CANVAS CACHING ---
-    // Mist particles
-    const mistBlueCache = document.createElement("canvas");
-    mistBlueCache.width = 120;
-    mistBlueCache.height = 120;
-    const mbc = mistBlueCache.getContext("2d");
+    const colors = getGateColors(gateId, !!monarchMode);
+
+    // Mist particles (primary color)
+    const mistPrimaryCache = document.createElement("canvas");
+    mistPrimaryCache.width = 120;
+    mistPrimaryCache.height = 120;
+    const mbc = mistPrimaryCache.getContext("2d");
     if (mbc) {
       const grad = mbc.createRadialGradient(60, 60, 0, 60, 60, 60);
-      grad.addColorStop(0, "rgba(0, 180, 255, 1.0)");
-      grad.addColorStop(0.5, "rgba(0, 180, 255, 0.33)");
+      grad.addColorStop(0, colors.primary);
+      grad.addColorStop(0.5, replaceAlpha(colors.primary, 0.33));
       grad.addColorStop(1, "rgba(0, 0, 0, 0)");
       mbc.fillStyle = grad;
       mbc.fillRect(0, 0, 120, 120);
     }
 
-    const mistPurpleCache = document.createElement("canvas");
-    mistPurpleCache.width = 120;
-    mistPurpleCache.height = 120;
-    const mpc = mistPurpleCache.getContext("2d");
+    // Mist particles (secondary color)
+    const mistSecondaryCache = document.createElement("canvas");
+    mistSecondaryCache.width = 120;
+    mistSecondaryCache.height = 120;
+    const mpc = mistSecondaryCache.getContext("2d");
     if (mpc) {
       const grad = mpc.createRadialGradient(60, 60, 0, 60, 60, 60);
-      grad.addColorStop(0, "rgba(138, 43, 226, 1.0)");
-      grad.addColorStop(0.5, "rgba(138, 43, 226, 0.33)");
+      grad.addColorStop(0, colors.secondary);
+      grad.addColorStop(0.5, replaceAlpha(colors.secondary, 0.33));
       grad.addColorStop(1, "rgba(0, 0, 0, 0)");
       mpc.fillStyle = grad;
       mpc.fillRect(0, 0, 120, 120);
@@ -254,8 +369,8 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
       dc.fill();
       const dropGrad = dc.createRadialGradient(4.2, 4.2, 0.4, 5, 5, 4);
       dropGrad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-      dropGrad.addColorStop(0.5, "rgba(0, 210, 255, 0.45)");
-      dropGrad.addColorStop(1, "rgba(138, 43, 226, 0.35)");
+      dropGrad.addColorStop(0.5, replaceAlpha(colors.primary, 0.45));
+      dropGrad.addColorStop(1, replaceAlpha(colors.secondary, 0.35));
       dc.fillStyle = dropGrad;
       dc.beginPath();
       dc.arc(5, 5, 4, 0, Math.PI * 2);
@@ -264,17 +379,19 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
     // --------------------------------
 
     // Lightning strike animation variables
-    const enableLightning = intensity === "medium" || intensity === "intense";
+    const enableLightning = intensity === "medium" || intensity === "intense" || monarchMode;
     let currentBolt: LightningSegment[] | null = null;
     let currentBolt2: LightningSegment[] | null = null;
     let boltLife = 0;
     let flashOpacity = 0;
     let lastStrikeTime = Date.now() - 3000;
     let nextStrikeDelay =
-      intensity === "intense"
+      intensity === "intense" || monarchMode
         ? 2000 + Math.random() * 3000
         : 4000 + Math.random() * 6000;
     let lastAudioTime = 0;
+
+    let forceImmediateStrike = isAriseBurst;
 
     const tick = () => {
       t += 0.01;
@@ -316,10 +433,10 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
           window.innerHeight / 2,
           window.innerWidth * 0.75,
         );
-        const purpleIntensity = bass * 0.35 * opacityMultiplier;
-        const blueIntensity = mid * 0.22 * opacityMultiplier;
-        bgGlow.addColorStop(0, `rgba(138, 43, 226, ${purpleIntensity})`); // Purple core
-        bgGlow.addColorStop(0.5, `rgba(0, 210, 255, ${blueIntensity * 0.5})`); // Cyan mid
+        const primaryIntensity = bass * 0.35 * opacityMultiplier * (monarchMode ? 1.5 : 1);
+        const secondaryIntensity = mid * 0.22 * opacityMultiplier * (monarchMode ? 1.5 : 1);
+        bgGlow.addColorStop(0, replaceAlpha(colors.primary, primaryIntensity));
+        bgGlow.addColorStop(0.5, replaceAlpha(colors.secondary, secondaryIntensity * 0.5));
         bgGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
         ctx.fillStyle = bgGlow;
         ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
@@ -331,7 +448,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
 
         // Fade in from spawn
         if (p.alpha < p.baseAlpha) {
-          p.alpha += 0.005;
+          p.alpha += 0.008; // slightly faster fade in
         }
 
         // Apply audio reactivity
@@ -357,6 +474,11 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
           }
         }
 
+        if (monarchMode) {
+          // Accelerate everything in monarch mode
+          currentSpeedY *= 1.35;
+        }
+
         // Physics update
         p.x += p.vx;
         p.y += currentSpeedY;
@@ -368,8 +490,11 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
           p.y = window.innerHeight + p.size;
           p.x = Math.random() * window.innerWidth;
           p.alpha = 0; // Fade in on respawn
+          // Reset velocities to normal speeds
+          p.vy = p.type === "rune" ? -0.15 - Math.random() * 0.3 : -0.05 - Math.random() * 0.1;
+          p.vx = (Math.random() - 0.5) * 0.25;
         }
-        if (p.y > window.innerHeight + p.size) {
+        if (p.y > window.innerHeight + p.size + 100) {
           p.y = -p.size;
           p.x = Math.random() * window.innerWidth;
           p.alpha = 0;
@@ -379,7 +504,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
         ctx.save();
         if (p.type === "mist") {
           // Draw using cached offscreen canvases
-          const cacheCanvas = i % 2 === 0 ? mistPurpleCache : mistBlueCache;
+          const cacheCanvas = i % 2 === 0 ? mistSecondaryCache : mistPrimaryCache;
           ctx.globalAlpha = currentAlpha * 0.45; // Max opacity scale
           ctx.drawImage(
             cacheCanvas,
@@ -398,15 +523,15 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
           ctx.rotate(p.rotation || 0);
 
           ctx.font = `bold ${currentSize}px "Orbitron", "Rajdhani", sans-serif`;
-          ctx.fillStyle = `rgba(0, 210, 255, ${currentAlpha})`;
-          if (intensity !== "intense") {
+          ctx.fillStyle = replaceAlpha(colors.primary, currentAlpha);
+          if (intensity !== "intense" && !monarchMode) {
             ctx.shadowBlur = hasAudio ? 6 + treble * 12 : 6;
-            ctx.shadowColor = `rgba(138, 43, 226, ${currentAlpha * 0.85})`;
+            ctx.shadowColor = replaceAlpha(colors.secondary, currentAlpha * 0.85);
           } else {
-            // Intense mode skips expensive shadowBlur, uses double text rendering instead
-            ctx.fillStyle = `rgba(138, 43, 226, ${currentAlpha * 0.5})`;
+            // Skip expensive shadowBlur, use double text rendering instead
+            ctx.fillStyle = replaceAlpha(colors.secondary, currentAlpha * 0.5);
             ctx.fillText(p.char || "", 2, 2);
-            ctx.fillStyle = `rgba(0, 210, 255, ${currentAlpha})`;
+            ctx.fillStyle = replaceAlpha(colors.primary, currentAlpha);
           }
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -416,7 +541,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
       }
 
       // --- Intense Rain & Droplets ---
-      if (intensity === "intense") {
+      if (intensity === "intense" || monarchMode) {
         ctx.save();
         // Rain
         for (const drop of rainDrops) {
@@ -429,8 +554,8 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             drop.y = -50;
           }
 
-          ctx.strokeStyle = `rgba(0, 210, 255, ${drop.alpha})`;
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = replaceAlpha(colors.primary, drop.alpha * (monarchMode ? 0.7 : 1));
+          ctx.lineWidth = monarchMode ? 2.2 : 1.5;
           ctx.beginPath();
           ctx.moveTo(drop.x, drop.y);
           ctx.lineTo(drop.x + drop.vx * 0.6, drop.y + drop.vy * 0.6);
@@ -456,7 +581,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
           // Draw trail
           if (drop.trailY.length > 0) {
             ctx.beginPath();
-            ctx.strokeStyle = `rgba(0, 210, 255, ${drop.alpha * 0.15})`;
+            ctx.strokeStyle = replaceAlpha(colors.primary, drop.alpha * 0.15);
             ctx.lineWidth = drop.r * 1.2;
             ctx.lineCap = "round";
             ctx.moveTo(drop.x, drop.trailY[0]);
@@ -481,11 +606,11 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
         ctx.restore();
       }
 
-      // --- Lightning Strike Effect (Medium/Intense modes only) ---
+      // --- Lightning Strike Effect ---
       if (enableLightning) {
         // 1. Flash decay
         if (flashOpacity > 0.01) {
-          flashOpacity *= 0.9; // Slower exponential decay for lingering flash
+          flashOpacity *= monarchMode ? 0.94 : 0.9; // Slower decay in Monarch Mode
         } else {
           flashOpacity = 0;
         }
@@ -493,15 +618,16 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
         // 2. Render background flash overlay
         if (flashOpacity > 0) {
           ctx.save();
-          // Add screen shake to the ambient flash glow too
-          const shakeVal = (Math.random() - 0.5) * 14 * flashOpacity;
+          // Add screen shake
+          const maxShake = monarchMode ? 28 : 14;
+          const shakeVal = (Math.random() - 0.5) * maxShake * flashOpacity;
           ctx.translate(shakeVal, shakeVal * 0.7);
 
           const grad = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
-          // High intensity neon overlay
-          grad.addColorStop(0, `rgba(255, 255, 255, ${flashOpacity * 0.32})`); // Blinding white flash at top
-          grad.addColorStop(0.15, `rgba(0, 210, 255, ${flashOpacity * 0.22})`); // Cyan transition
-          grad.addColorStop(0.4, `rgba(138, 43, 226, ${flashOpacity * 0.12})`); // Deep shadow purple mid
+          // High intensity overlay based on gate color
+          grad.addColorStop(0, `rgba(255, 255, 255, ${flashOpacity * 0.32})`);
+          grad.addColorStop(0.15, replaceAlpha(colors.primary, flashOpacity * 0.22));
+          grad.addColorStop(0.4, replaceAlpha(colors.secondary, flashOpacity * 0.12));
           grad.addColorStop(1, "rgba(0, 0, 0, 0)");
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
@@ -536,16 +662,18 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
         }
 
         // Trigger on extreme audio bass drops (fallback)
-        if (hasAudio && bass > 0.88 && now - lastStrikeTime > 3000) {
+        const bassThreshold = monarchMode ? 0.8 : 0.88;
+        if (hasAudio && bass > bassThreshold && now - lastStrikeTime > 3000) {
           triggerStrike = true;
         }
 
-        if (triggerStrike) {
+        if (triggerStrike || forceImmediateStrike) {
+          forceImmediateStrike = false;
           lastStrikeTime = now;
-          if (intensity === "intense") {
-            nextStrikeDelay = 2000 + Math.random() * 4000; // 2-6s for intense storm
+          if (intensity === "intense" || monarchMode) {
+            nextStrikeDelay = 1500 + Math.random() * 3000; // faster strikes in monarch/intense
           } else {
-            nextStrikeDelay = 8000 + Math.random() * 8000; // 8-16s for normal
+            nextStrikeDelay = 8000 + Math.random() * 8000;
           }
 
           const startX = Math.random() * window.innerWidth;
@@ -559,13 +687,14 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             0,
             endX,
             endY,
-            window.innerWidth * 0.26, // Greater displacement for wilder zig-zags
-            8.0, // Thinner segments for high fractal resolution
-            0.38, // More branching branches
+            window.innerWidth * (monarchMode ? 0.32 : 0.26),
+            monarchMode ? 6.0 : 8.0,
+            monarchMode ? 0.45 : 0.38,
           );
 
-          // Twin lightning strike (45% probability)
-          if (Math.random() < 0.45) {
+          // Twin lightning strike (60% probability in Monarch Mode, 45% standard)
+          const twinChance = monarchMode ? 0.6 : 0.45;
+          if (Math.random() < twinChance) {
             const startX2 = startX + (Math.random() - 0.5) * 200;
             const endX2 =
               startX2 + (Math.random() - 0.5) * (window.innerWidth * 0.3);
@@ -583,8 +712,8 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             currentBolt2 = null;
           }
 
-          boltLife = 9 + Math.floor(Math.random() * 6); // 9 to 15 frames of visual life
-          flashOpacity = 0.25 + Math.random() * 0.15; // Decreased opacity (0.25 - 0.40) for better HUD visibility
+          boltLife = 9 + Math.floor(Math.random() * 6);
+          flashOpacity = 0.25 + Math.random() * 0.2; // stronger flash
         }
 
         // 4. Render lightning bolt tree (with electrical strobe effect)
@@ -597,7 +726,8 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             ctx.lineJoin = "round";
 
             // Screen Shake during main bolt render
-            const shake = (Math.random() - 0.5) * 18 * flashOpacity;
+            const shakeAmt = monarchMode ? 26 : 18;
+            const shake = (Math.random() - 0.5) * shakeAmt * flashOpacity;
             ctx.translate(shake, shake * 0.8);
 
             const drawBoltPath = (
@@ -609,7 +739,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             ) => {
               ctx.save();
               ctx.strokeStyle = strokeColor;
-              if (intensity !== "intense") {
+              if (intensity !== "intense" && !monarchMode) {
                 ctx.shadowBlur = blur;
                 ctx.shadowColor = blurColor;
               } else {
@@ -636,41 +766,41 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
             // Main bolt rendering layers (Ambient -> Glow -> Inner Core)
             drawBoltPath(
               currentBolt,
-              34,
-              "rgba(138, 43, 226, 0.15)",
+              monarchMode ? 42 : 34,
+              replaceAlpha(colors.secondary, 0.15),
               55,
-              "rgba(138, 43, 226, 0.95)",
+              replaceAlpha(colors.secondary, 0.95),
             );
             drawBoltPath(
               currentBolt,
-              13,
-              "rgba(0, 210, 255, 0.55)",
+              monarchMode ? 18 : 13,
+              replaceAlpha(colors.primary, 0.55),
               24,
-              "rgba(0, 210, 255, 0.9)",
+              replaceAlpha(colors.primary, 0.9),
             );
             drawBoltPath(
               currentBolt,
-              3.8,
+              4.5,
               "rgba(255, 255, 255, 1.0)",
               6,
               "rgba(255, 255, 255, 1.0)",
             );
 
-            // Twin bolt rendering layers (thinner & dimmer secondary lightning)
+            // Twin bolt rendering layers
             if (currentBolt2) {
               drawBoltPath(
                 currentBolt2,
                 22,
-                "rgba(138, 43, 226, 0.1)",
+                replaceAlpha(colors.secondary, 0.1),
                 35,
-                "rgba(138, 43, 226, 0.8)",
+                replaceAlpha(colors.secondary, 0.8),
               );
               drawBoltPath(
                 currentBolt2,
                 8,
-                "rgba(0, 210, 255, 0.45)",
+                replaceAlpha(colors.primary, 0.45),
                 16,
-                "rgba(0, 210, 255, 0.8)",
+                replaceAlpha(colors.primary, 0.8),
               );
               drawBoltPath(
                 currentBolt2,
@@ -700,7 +830,7 @@ export function AnimatedBackground({ intensity, audioRef, beatDrops }: Props) {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, [intensity, beatDrops, audioRef]);
+  }, [intensity, beatDrops, audioRef, gateId, ariseTrigger, monarchMode]);
 
   if (intensity === "off") return null;
 

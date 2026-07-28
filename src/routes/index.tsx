@@ -24,6 +24,8 @@ import { AnimatedBackground } from "@/components/Shadow/AnimatedBackground";
 import { SettingsDrawer } from "@/components/Shadow/SettingsDrawer";
 import { toast } from "sonner";
 import { ExitConfirmDialog } from "@/components/Shadow/ExitConfirmDialog";
+import { YouTubeSearchDrawer } from "@/components/Shadow/YouTubeSearchDrawer";
+import { GlobalDownloadProgress } from "@/components/Shadow/GlobalDownloadProgress";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -125,6 +127,8 @@ function ShadowPlayerPage() {
     setHasMounted(true);
   }, []);
 
+
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -153,7 +157,7 @@ function ShadowPlayerPage() {
     initialData: GATES,
   });
 
-  const { data: trackInventory = NEW_UNASSIGNED_TRACKS } = useQuery<Track[]>({
+  const { data: trackInventory = NEW_UNASSIGNED_TRACKS, refetch: refetchTracks } = useQuery<Track[]>({
     queryKey: ["tracks"],
     queryFn: fetchTracks,
     retry: false,
@@ -305,6 +309,14 @@ function ShadowPlayerPage() {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [monarchMode, setMonarchMode] = useState(false);
+  const [ariseTrigger, setAriseTrigger] = useState(0);
+
+  useEffect(() => {
+    if (activeTrack) {
+      setAriseTrigger((prev) => prev + 1);
+    }
+  }, [activeTrack?.id]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -326,7 +338,21 @@ function ShadowPlayerPage() {
 
   // Settings states
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [cursorMode, setCursorMode] = useState("monarch");
+  const [globalDownloads, setGlobalDownloads] = useState<Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus>>({});
+
+  const isLocalApp = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const hostname = window.location.hostname;
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    );
+  }, []);
   const [bgIntensity, setBgIntensity] = useState("subtle");
   const [dspEnabled, setDspEnabled] = useState(false);
   const [normalizationEnabled, setNormalizationEnabled] = useState(true);
@@ -338,8 +364,50 @@ function ShadowPlayerPage() {
   const [shuffle, setShuffle] = useState(false);
   const [globalShuffleActive, setGlobalShuffleActive] = useState(false);
   const [repeatMode, setRepeatMode] = useState<"none" | "all" | "one">("none");
+  const [playedShuffleIds, setPlayedShuffleIds] = useState<string[]>([]);
 
   const isLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLocalApp) return;
+
+    let prevDownloads: Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus> = {};
+
+    const fetchDownloads = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/youtube/downloads`);
+        if (!res.ok) return;
+        const list = await res.json();
+        
+        const newDownloads: Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus> = {};
+        let triggerRefresh = false;
+
+        list.forEach((item: any) => {
+          newDownloads[item.videoId] = item;
+          if (
+            item.status === "completed" &&
+            prevDownloads[item.videoId]?.status !== "completed"
+          ) {
+            triggerRefresh = true;
+            toast.success(`SYSTEM: "${item.title}" successfully added and synced!`);
+          }
+        });
+
+        prevDownloads = newDownloads;
+        setGlobalDownloads(newDownloads);
+
+        if (triggerRefresh) {
+          refetchTracks();
+        }
+      } catch (err) {
+        console.warn("Failed to fetch active downloads status:", err);
+      }
+    };
+
+    fetchDownloads();
+    const interval = setInterval(fetchDownloads, 2000);
+    return () => clearInterval(interval);
+  }, [isLocalApp, refetchTracks]);
 
   const initAudioContext = () => {
     if (audioContextRef.current) return;
@@ -428,43 +496,54 @@ function ShadowPlayerPage() {
   // Synchronize settings changes with active Web Audio nodes
   useEffect(() => {
     if (bassFilterRef.current) {
+      const effectiveBass = monarchMode
+        ? Math.max(15, dspEnabled ? bassGain + 10 : 15)
+        : (dspEnabled ? bassGain : 0);
       bassFilterRef.current.gain.setValueAtTime(
-        dspEnabled ? bassGain : 0,
+        effectiveBass,
         audioContextRef.current?.currentTime || 0,
       );
     }
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-bass", String(bassGain));
     }
-  }, [bassGain, dspEnabled]);
+  }, [bassGain, dspEnabled, monarchMode]);
 
   useEffect(() => {
     if (midFilterRef.current) {
+      const effectiveMid = monarchMode
+        ? Math.min(-2, dspEnabled ? midGain - 3 : -2)
+        : (dspEnabled ? midGain : 0);
       midFilterRef.current.gain.setValueAtTime(
-        dspEnabled ? midGain : 0,
+        effectiveMid,
         audioContextRef.current?.currentTime || 0,
       );
     }
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-mid", String(midGain));
     }
-  }, [midGain, dspEnabled]);
+  }, [midGain, dspEnabled, monarchMode]);
 
   useEffect(() => {
     if (trebleFilterRef.current) {
+      const effectiveTreble = monarchMode
+        ? Math.max(4, dspEnabled ? trebleGain + 2 : 4)
+        : (dspEnabled ? trebleGain : 0);
       trebleFilterRef.current.gain.setValueAtTime(
-        dspEnabled ? trebleGain : 0,
+        effectiveTreble,
         audioContextRef.current?.currentTime || 0,
       );
     }
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-treble", String(trebleGain));
     }
-  }, [trebleGain, dspEnabled]);
+  }, [trebleGain, dspEnabled, monarchMode]);
 
   useEffect(() => {
     if (reverbRef.current) {
-      const wetGain = dspEnabled && reverbEnabled ? 0.35 : 0.0;
+      const wetGain = monarchMode
+        ? (dspEnabled && reverbEnabled ? 0.45 : 0.25)
+        : (dspEnabled && reverbEnabled ? 0.35 : 0.0);
       reverbRef.current.gain.setValueAtTime(
         wetGain,
         audioContextRef.current?.currentTime || 0,
@@ -474,7 +553,7 @@ function ShadowPlayerPage() {
       localStorage.setItem("slplayer-dsp-reverb", String(reverbEnabled));
       localStorage.setItem("slplayer-dsp-enabled", String(dspEnabled));
     }
-  }, [reverbEnabled, dspEnabled]);
+  }, [reverbEnabled, dspEnabled, monarchMode]);
 
   useEffect(() => {
     if (isLoadedRef.current) {
@@ -994,6 +1073,7 @@ function ShadowPlayerPage() {
   const handlePlay = (t: Track) => {
     setGlobalShuffleActive(false);
     setActiveTrack(t);
+    setPlayedShuffleIds([t.id]);
     setPlaying(true);
     setIsPlayerOpen(true);
     playTrackSync(t);
@@ -1010,10 +1090,29 @@ function ShadowPlayerPage() {
     const randomTrack = playable[Math.floor(Math.random() * playable.length)];
     setGlobalShuffleActive(true);
     setActiveTrack(randomTrack);
+    setPlayedShuffleIds([randomTrack.id]);
     setPlaying(true);
     setIsPlayerOpen(true);
     playTrackSync(randomTrack);
     toast.success("SYSTEM SHUFFLE: All gates randomized");
+  };
+
+  const handleGateShuffle = () => {
+    const playable = activeGate.tracks.filter(
+      (t) => !isOffline || cachedTrackIds.has(t.id),
+    );
+    if (playable.length === 0) {
+      toast.error("SYSTEM ERROR: No tracks available in this gate");
+      return;
+    }
+    const randomTrack = playable[Math.floor(Math.random() * playable.length)];
+    setGlobalShuffleActive(false);
+    setActiveTrack(randomTrack);
+    setPlayedShuffleIds([randomTrack.id]);
+    setPlaying(true);
+    setIsPlayerOpen(true);
+    playTrackSync(randomTrack);
+    toast.success(`GATE SHUFFLE: ${activeGate.name}`);
   };
 
   const handleToggle = () => {
@@ -1061,17 +1160,27 @@ function ShadowPlayerPage() {
 
     let nextTrack: Track | null = null;
 
-    if (globalShuffleActive) {
-      const playable = allGateTracks.filter(
-        (t) => !isOffline || cachedTrackIds.has(t.id),
-      );
+    if (globalShuffleActive || shuffle) {
+      const playable = globalShuffleActive
+        ? allGateTracks.filter((t) => !isOffline || cachedTrackIds.has(t.id))
+        : (gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id)) || activeGate).tracks.filter((t) => !isOffline || cachedTrackIds.has(t.id));
+
       if (playable.length > 0) {
         if (playable.length === 1) {
           nextTrack = playable[0];
         } else {
-          const filtered = playable.filter((t) => t.id !== activeTrack.id);
-          const candidates = filtered.length > 0 ? filtered : playable;
-          nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
+          let unplayed = playable.filter((t) => !playedShuffleIds.includes(t.id) && t.id !== activeTrack.id);
+          let newPlayedIds = [...playedShuffleIds];
+
+          if (unplayed.length === 0) {
+            unplayed = playable.filter((t) => t.id !== activeTrack.id);
+            if (unplayed.length === 0) unplayed = playable; // Fallback
+            newPlayedIds = []; // Reset cycle
+          }
+
+          nextTrack = unplayed[Math.floor(Math.random() * unplayed.length)];
+          newPlayedIds.push(nextTrack.id);
+          setPlayedShuffleIds(newPlayedIds);
         }
       }
     } else {
@@ -1082,24 +1191,9 @@ function ShadowPlayerPage() {
       const len = availableTracks.length;
       if (len === 0) return;
 
-      if (shuffle) {
-        const playable = availableTracks.filter(
-          (t) => !isOffline || cachedTrackIds.has(t.id),
-        );
-        if (playable.length > 0) {
-          if (playable.length === 1) {
-            nextTrack = playable[0];
-          } else {
-            const filtered = playable.filter((t) => t.id !== activeTrack.id);
-            const candidates = filtered.length > 0 ? filtered : playable;
-            nextTrack =
-              candidates[Math.floor(Math.random() * candidates.length)];
-          }
-        }
-      } else {
-        const currentIndex = availableTracks.findIndex(
-          (t) => t.id === activeTrack.id,
-        );
+      const currentIndex = availableTracks.findIndex(
+        (t) => t.id === activeTrack.id,
+      );
         if (currentIndex !== -1) {
           let nextIndex = (currentIndex + 1) % len;
           let attempts = 0;
@@ -1123,7 +1217,6 @@ function ShadowPlayerPage() {
             nextTrack = availableTracks[nextIndex];
           }
         }
-      }
     }
 
     if (nextTrack) {
@@ -1518,6 +1611,9 @@ function ShadowPlayerPage() {
                 ? beatDropsData[activeTrack.id]
                 : undefined
             }
+            gateId={activeTrack ? (gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id))?.id || activeGate.id) : activeGateId}
+            ariseTrigger={ariseTrigger}
+            monarchMode={monarchMode}
           />
           {/* Radial gradient mask (exact spec) */}
           <div
@@ -1561,7 +1657,11 @@ function ShadowPlayerPage() {
               </div>
             ) : (
               <>
-                <SystemHeader onOpenSettings={() => setIsSettingsOpen(true)} />
+                <SystemHeader
+                  onOpenSettings={() => setIsSettingsOpen(true)}
+                  onOpenSearch={() => setIsSearchOpen(true)}
+                  showSearchButton={isLocalApp}
+                />
 
                 <LayoutGroup>
                   {!systemActive ? (
@@ -1602,6 +1702,7 @@ function ShadowPlayerPage() {
                                 onUnassign={handleUnassignTrack}
                                 gates={gates}
                                 onClose={() => setActiveGateId(null)}
+                                onGateShuffle={handleGateShuffle}
                               />
                             </motion.div>
                           )}
@@ -1673,6 +1774,8 @@ function ShadowPlayerPage() {
                           }
                           pipActive={pipActive}
                           onTogglePip={togglePip}
+                          monarchMode={monarchMode}
+                          onToggleMonarchMode={() => setMonarchMode(!monarchMode)}
                         />
                       </div>
                       {/* Desktop queue */}
@@ -1731,6 +1834,14 @@ function ShadowPlayerPage() {
             normalizationEnabled={normalizationEnabled}
             setNormalizationEnabled={setNormalizationEnabled}
           />
+
+          <YouTubeSearchDrawer
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            apiBase={API_BASE}
+            downloads={globalDownloads}
+          />
+          <GlobalDownloadProgress downloads={globalDownloads} />
         </>
       )}
 

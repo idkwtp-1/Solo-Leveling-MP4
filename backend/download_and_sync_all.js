@@ -67,37 +67,44 @@ async function main() {
           "-o",
           path.join(mediaDir, "%(title)s.%(ext)s"),
           "--print",
-          "%(title)s",
+          "METADATA_TITLE:%(title)s",
           "--print",
-          "%(duration)s",
+          "METADATA_DURATION:%(duration)s",
           "--print",
-          "%(filename)s",
+          "METADATA_FILENAME:%(filename)s",
           url,
         ],
-        { encoding: "utf-8" },
+        {
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            PYTHONIOENCODING: "utf-8",
+            PYTHONUTF8: "1",
+          },
+        },
       );
 
-      const lines = output
-        .trim()
-        .split("\n")
-        .filter((l) => l.trim() !== "");
-      // Filter out warnings/extra logs if present
-      const cleanLines = lines.filter(
-        (l) =>
-          !l.startsWith("WARNING:") &&
-          !l.includes("supported JavaScript runtime"),
-      );
+      let title = "";
+      let durationSecs = "";
+      let absoluteFilePath = "";
 
-      if (cleanLines.length < 3) {
+      const lines = output.split("\n").map(l => l.trim());
+      for (const line of lines) {
+        if (line.startsWith("METADATA_TITLE:")) {
+          title = line.substring("METADATA_TITLE:".length);
+        } else if (line.startsWith("METADATA_DURATION:")) {
+          durationSecs = line.substring("METADATA_DURATION:".length);
+        } else if (line.startsWith("METADATA_FILENAME:")) {
+          absoluteFilePath = line.substring("METADATA_FILENAME:".length);
+        }
+      }
+
+      if (!title || !durationSecs || !absoluteFilePath) {
         console.error(
           `Unexpected yt-dlp output format. Output was:\n${output}`,
         );
         continue;
       }
-
-      const title = cleanLines[0].trim();
-      const durationSecs = cleanLines[1].trim();
-      const absoluteFilePath = cleanLines[2].trim();
       const relativeFileName = path.basename(absoluteFilePath);
 
       // Generate sanitized track ID

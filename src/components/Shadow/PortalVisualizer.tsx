@@ -3,11 +3,12 @@ import { useEffect, useId, useRef } from "react";
 type Props = {
   active: boolean;
   size?: number;
+  monarchMode?: boolean;
 };
 
 const SPIKES = 96;
 
-export function PortalVisualizer({ active, size = 320 }: Props) {
+export function PortalVisualizer({ active, size = 320, monarchMode = false }: Props) {
   const uid = useId().replace(/:/g, "");
   const spikesRef = useRef<SVGGElement>(null);
   const ringRef = useRef<SVGCircleElement>(null);
@@ -39,8 +40,9 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
         for (let i = 0; i < children.length; i++) {
           const line = children[i] as SVGLineElement;
           const phase = (i / SPIKES) * Math.PI * 2;
+          const ampFactor = monarchMode ? 1.85 : 1.0;
           const amp =
-            28 *
+            28 * ampFactor *
             (0.5 +
               0.5 *
                 Math.sin(phase * 3 + t * 1.7) *
@@ -48,21 +50,29 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
           const len = 14 + Math.abs(amp);
           line.setAttribute("y2", String(-len));
         }
-        g.setAttribute("transform", `rotate(${(t * 18) % 360})`);
+        const rotSpeed = monarchMode ? 28 : 18;
+        g.setAttribute("transform", `rotate(${(t * rotSpeed) % 360})`);
       }
       if (ringRef.current) {
-        const pulse = 1 + Math.sin(t * 2) * 0.04;
+        const pulseStrength = monarchMode ? 0.08 : 0.04;
+        const pulse = 1 + Math.sin(t * 2) * pulseStrength;
         ringRef.current.setAttribute("r", String(78 * pulse));
       }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [active]);
+  }, [active, monarchMode]);
 
   const spikes = Array.from({ length: SPIKES }, (_, i) => {
     const angle = (i / SPIKES) * 360;
     const isPurple = i % 3 === 0;
+
+    let strokeColor = isPurple ? "oklch(0.5 0.27 295)" : "oklch(0.82 0.16 220)";
+    if (monarchMode) {
+      strokeColor = isPurple ? "oklch(0.5 0.25 15)" : "oklch(0.65 0.24 20)";
+    }
+
     return (
       <line
         key={i}
@@ -70,8 +80,8 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
         y1={-92}
         x2={0}
         y2={-100}
-        stroke={isPurple ? "oklch(0.6 0.27 295)" : "oklch(0.82 0.16 220)"}
-        strokeWidth={isPurple ? 1.6 : 1}
+        stroke={strokeColor}
+        strokeWidth={isPurple ? (monarchMode ? 2.2 : 1.6) : (monarchMode ? 1.4 : 1)}
         strokeLinecap="round"
         transform={`rotate(${angle})`}
         opacity={isPurple ? 0.9 : 0.75}
@@ -88,11 +98,12 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
       <div
         className="absolute inset-0 rounded-full"
         style={{
-          background:
-            "radial-gradient(circle, oklch(0.5 0.27 295 / 0.35) 0%, oklch(0.82 0.16 220 / 0.12) 40%, transparent 70%)",
+          background: monarchMode
+            ? "radial-gradient(circle, oklch(0.6 0.25 20 / 0.5) 0%, oklch(0.6 0.25 20 / 0.2) 40%, transparent 70%)"
+            : "radial-gradient(circle, oklch(0.5 0.27 295 / 0.35) 0%, oklch(0.82 0.16 220 / 0.12) 40%, transparent 70%)",
           filter: active ? "blur(20px)" : "blur(28px)",
           opacity: active ? 1 : 0.55,
-          transition: "opacity 400ms ease",
+          transition: "opacity 400ms ease, background 300ms ease",
         }}
       />
       <svg
@@ -104,7 +115,7 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
         <circle
           r={110}
           fill="none"
-          stroke="oklch(0.55 0.15 230 / 0.35)"
+          stroke={monarchMode ? "oklch(0.55 0.2 20 / 0.5)" : "oklch(0.55 0.15 230 / 0.35)"}
           strokeWidth={1}
           strokeDasharray="2 6"
           className="animate-vortex"
@@ -113,20 +124,20 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
         <circle
           r={100}
           fill="none"
-          stroke="oklch(0.5 0.27 295 / 0.4)"
+          stroke={monarchMode ? "oklch(0.4 0.2 15 / 0.5)" : "oklch(0.5 0.27 295 / 0.4)"}
           strokeWidth={0.8}
         />
         <circle
           ref={ringRef}
           r={78}
           fill="none"
-          stroke="oklch(0.82 0.16 220 / 0.9)"
+          stroke={monarchMode ? "oklch(0.65 0.24 20 / 0.95)" : "oklch(0.82 0.16 220 / 0.9)"}
           strokeWidth={1.2}
         />
         <circle
           r={56}
           fill="none"
-          stroke="oklch(0.5 0.27 295 / 0.5)"
+          stroke={monarchMode ? "oklch(0.45 0.2 20 / 0.5)" : "oklch(0.5 0.27 295 / 0.5)"}
           strokeWidth={0.8}
           strokeDasharray="4 4"
         />
@@ -135,12 +146,12 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
           <radialGradient id={`core-${uid}`}>
             <stop
               offset="0%"
-              stopColor="oklch(0.95 0.12 220)"
+              stopColor={monarchMode ? "oklch(0.85 0.2 20)" : "oklch(0.95 0.12 220)"}
               stopOpacity="0.9"
             />
             <stop
               offset="50%"
-              stopColor="oklch(0.5 0.27 295)"
+              stopColor={monarchMode ? "oklch(0.5 0.25 15)" : "oklch(0.5 0.27 295)"}
               stopOpacity="0.45"
             />
             <stop
@@ -168,14 +179,14 @@ export function PortalVisualizer({ active, size = 320 }: Props) {
         <g ref={spikesRef}>{spikes}</g>
         {/* center sigil */}
         <g
-          stroke="oklch(0.82 0.16 220)"
+          stroke={monarchMode ? "oklch(0.7 0.22 20)" : "oklch(0.82 0.16 220)"}
           strokeWidth={0.8}
           fill="none"
           opacity={0.85}
         >
           <polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" />
           <polygon points="0,-14 12,-7 12,7 0,14 -12,7 -12,-7" opacity={0.7} />
-          <circle r={4} fill="oklch(0.82 0.16 220)" />
+          <circle r={4} fill={monarchMode ? "oklch(0.7 0.22 20)" : "oklch(0.82 0.16 220)"} />
         </g>
       </svg>
     </div>

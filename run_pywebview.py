@@ -34,17 +34,18 @@ class Api:
     def toggle_mini_mode(self, is_mini):
         if not self._window:
             return
+
         if is_mini and not self._mini_active:
             self._mini_active = True
-            # Exit fullscreen first, then shrink to mini size
-            self._window.toggle_fullscreen()
-            time.sleep(0.15)
+            # Use restore instead of toggle_fullscreen to avoid buggy frame restoration
+            self._window.restore()
+            time.sleep(0.1)
             self._window.resize(300, 180)
             self._window.set_on_top(True)
             print("[SYSTEM] Mini player active.")
         elif not is_mini and self._mini_active:
             self._mini_active = False
-            # Restore always-on-top and re-enter fullscreen
+            # Restore always-on-top and go back to fullscreen
             self._window.set_on_top(False)
             time.sleep(0.1)
             self._window.toggle_fullscreen()
@@ -109,9 +110,11 @@ def main():
             url="http://127.0.0.1:3001",
             width=1280,
             height=720,
-            min_size=(800, 600),
+            min_size=(300, 180),
             fullscreen=True,
             frameless=True,
+            resizable=False,
+            easy_drag=False,
             background_color='#0b0e14',
             js_api=api,
             hidden=True

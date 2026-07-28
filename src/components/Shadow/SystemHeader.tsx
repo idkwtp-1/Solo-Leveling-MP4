@@ -1,10 +1,12 @@
-import { Settings } from "lucide-react";
+import { Settings, Search } from "lucide-react";
 
 type Props = {
   onOpenSettings?: () => void;
+  onOpenSearch?: () => void;
+  showSearchButton?: boolean;
 };
 
-export function SystemHeader({ onOpenSettings }: Props) {
+export function SystemHeader({ onOpenSettings, onOpenSearch, showSearchButton = false }: Props) {
   return (
     <header className="flex items-center justify-between gap-4 pb-6 border-b border-border select-none">
       <div className="flex items-center gap-3">
@@ -21,6 +23,16 @@ export function SystemHeader({ onOpenSettings }: Props) {
       <div className="flex items-center gap-4">
         {/* Custom Window Controls (Visible only in desktop mode when pywebview is available) */}
         <div className="flex items-center gap-2 border-l border-border/50 pl-4">
+          {showSearchButton && onOpenSearch && (
+            <button
+              onClick={onOpenSearch}
+              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer mr-2"
+              title="Search & Download YouTube Music"
+              aria-label="YouTube Search"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          )}
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}

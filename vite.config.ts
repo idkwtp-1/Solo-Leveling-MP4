@@ -1,25 +1,38 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, cloudflare (build-only),
-//     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
-//     error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... } }) if needed.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 
 export default defineConfig({
-  cloudflare: false,
-  tanstackStart: {
-    server: { entry: "server" },
-    spa: { enabled: true },
+  base: process.env.NODE_ENV === "production" ? "/Solo-Leveling-MP4/" : "/",
+  server: {
+    port: 8081,
+    strictPort: true,
   },
-  vite: {
-    base: process.env.NODE_ENV === "production" ? "/Solo-Leveling-MP4/" : "/",
-    server: {
-      port: 8081,
-      strictPort: true,
+  resolve: {
+    alias: {
+      "@": `${process.cwd()}/src`
     },
-    optimizeDeps: {
-      include: ["use-sync-external-store/shim/with-selector"],
-    },
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@tanstack/query-core"
+    ]
   },
+  optimizeDeps: {
+    include: ["use-sync-external-store/shim/with-selector"],
+  },
+  plugins: [
+    tanstackStart({
+      server: { entry: "server" },
+      spa: { enabled: true }
+    }),
+    react(),
+    tailwindcss(),
+    tsconfigPaths({ projects: ["./tsconfig.json"] }),
+  ],
 });
