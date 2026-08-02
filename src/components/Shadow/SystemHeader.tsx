@@ -6,7 +6,11 @@ type Props = {
   showSearchButton?: boolean;
 };
 
-export function SystemHeader({ onOpenSettings, onOpenSearch, showSearchButton = false }: Props) {
+export function SystemHeader({
+  onOpenSettings,
+  onOpenSearch,
+  showSearchButton = false,
+}: Props) {
   return (
     <header className="flex items-center justify-between gap-4 pb-6 border-b border-border select-none">
       <div className="flex items-center gap-3">
@@ -20,13 +24,14 @@ export function SystemHeader({ onOpenSettings, onOpenSearch, showSearchButton = 
           <span className="text-foreground">SHADOW PLAYER</span>
         </h1>
       </div>
+
       <div className="flex items-center gap-4">
-        {/* Custom Window Controls (Visible only in desktop mode when pywebview is available) */}
+        {/* Custom Window Controls */}
         <div className="flex items-center gap-2 border-l border-border/50 pl-4">
           {showSearchButton && onOpenSearch && (
             <button
               onClick={onOpenSearch}
-              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer mr-2"
+              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer"
               title="Search & Download YouTube Music"
               aria-label="YouTube Search"
             >
@@ -36,7 +41,7 @@ export function SystemHeader({ onOpenSettings, onOpenSearch, showSearchButton = 
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer mr-2"
+              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer"
               title="System Settings"
               aria-label="Settings"
             >

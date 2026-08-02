@@ -130,8 +130,8 @@ function loadAssignments() {
   return DEFAULT_ASSIGNMENTS;
 }
 
-// Gates are empty shells — tracks are assigned dynamically via the frontend
-const GATES_DATA = [
+const GATES_PATH = path.join(__dirname, "media", "gates.json");
+const DEFAULT_GATES = [
   {
     id: "boss",
     name: "BOSS THEMES",
@@ -170,13 +170,83 @@ const GATES_DATA = [
   { id: "awaken", name: "AWAKENING", rank: "??", code: "GT-006", tracks: [] },
 ];
 
+function loadGates() {
+  if (fs.existsSync(GATES_PATH)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(GATES_PATH, "utf-8"));
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch (err) {
+      console.error("[SLPlayer Backend] Error reading gates.json:", err);
+    }
+  }
+  return DEFAULT_GATES;
+}
+
+function saveGates(gates) {
+  try {
+    fs.writeFileSync(GATES_PATH, JSON.stringify(gates, null, 2));
+  } catch (err) {
+    console.error("[SLPlayer Backend] Error writing gates.json:", err);
+  }
+}
+
 // Gate endpoints
 app.get("/api/gates", (req, res) => {
-  res.json(GATES_DATA);
+  res.json(loadGates());
+});
+
+app.post("/api/gates", express.json(), (req, res) => {
+  const { name, rank } = req.body;
+  if (!name) return res.status(400).json({ error: "Missing gate name" });
+
+  const gates = loadGates();
+  const newId = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (gates.some((g) => g.id === newId)) {
+    return res.status(400).json({ error: "Gate with this name already exists" });
+  }
+
+  const newGate = {
+    id: newId,
+    name: name.toUpperCase(),
+    rank: (rank || "S-RANK").toUpperCase(),
+    code: `GT-${String(gates.length + 1).padStart(3, "0")}`,
+    tracks: [],
+  };
+
+  gates.push(newGate);
+  saveGates(gates);
+  res.json(gates);
+});
+
+app.delete("/api/gates/:gateId", (req, res) => {
+  const { gateId } = req.params;
+  let gates = loadGates();
+  gates = gates.filter((g) => g.id !== gateId);
+  saveGates(gates);
+
+  // Unassign tracks from deleted gate
+  const assignments = loadAssignments();
+  let modified = false;
+  Object.keys(assignments).forEach((trackId) => {
+    if (assignments[trackId] === gateId) {
+      delete assignments[trackId];
+      modified = true;
+    }
+  });
+  if (modified) {
+    try {
+      fs.writeFileSync(ASSIGNMENTS_PATH, JSON.stringify(assignments, null, 2));
+    } catch (err) {
+      console.error("[SLPlayer Backend] Failed to update assignments on gate delete:", err);
+    }
+  }
+
+  res.json(gates);
 });
 
 app.get("/api/gates/:gateId", (req, res) => {
-  const gate = GATES_DATA.find((g) => g.id === req.params.gateId);
+  const gates = loadGates();
+  const gate = gates.find((g) => g.id === req.params.gateId);
   if (!gate) {
     return res.status(404).json({ error: "Gate not found" });
   }
@@ -428,11 +498,13 @@ app.post("/api/youtube/download", express.json(), (req, res) => {
 
     const existingIds = new Set(inventory.map((t) => t.id));
     if (!existingIds.has(trackId)) {
+      const durSecs = parseInt(durationSecs, 10);
       inventory.push({
         id: trackId,
         filename: relativeFileName,
         title: title,
         duration: formatDuration(durationSecs),
+        ...(isNaN(durSecs) ? {} : { endTime: durSecs }),
       });
       try {
         fs.writeFileSync(INVENTORY_PATH, JSON.stringify(inventory, null, 2));
@@ -503,6 +575,54 @@ app.get("/api/tracks", (req, res) => {
     duration: "??",
   }));
   res.json(fallbackList);
+});
+
+// Endpoint to delete a track (physical file, inventory, assignments)
+app.delete("/api/tracks/:trackId", (req, res) => {
+  const { trackId } = req.params;
+  let inventory = [];
+  if (fs.existsSync(INVENTORY_PATH)) {
+    try {
+      inventory = JSON.parse(fs.readFileSync(INVENTORY_PATH, "utf-8"));
+    } catch (err) {
+      console.error("[SLPlayer Backend] Failed to read inventory for delete:", err);
+    }
+  }
+
+  const trackToDelete = inventory.find((t) => t.id === trackId);
+  if (trackToDelete && trackToDelete.filename) {
+    const audioFilePath = path.join(mediaDir, trackToDelete.filename);
+    if (fs.existsSync(audioFilePath)) {
+      try {
+        fs.unlinkSync(audioFilePath);
+        console.log(`[SLPlayer Backend] Deleted file: ${audioFilePath}`);
+      } catch (err) {
+        console.error(`[SLPlayer Backend] Error deleting file ${audioFilePath}:`, err);
+      }
+    }
+  }
+
+  // Update inventory
+  inventory = inventory.filter((t) => t.id !== trackId);
+  try {
+    fs.writeFileSync(INVENTORY_PATH, JSON.stringify(inventory, null, 2));
+  } catch (err) {
+    console.error("[SLPlayer Backend] Error saving inventory after delete:", err);
+  }
+
+  // Update assignments
+  const assignments = loadAssignments();
+  if (assignments[trackId]) {
+    delete assignments[trackId];
+    try {
+      fs.writeFileSync(ASSIGNMENTS_PATH, JSON.stringify(assignments, null, 2));
+    } catch (err) {
+      console.error("[SLPlayer Backend] Error saving assignments after track delete:", err);
+    }
+  }
+
+  loadInventory();
+  res.json({ message: "Track deleted successfully", trackId });
 });
 
 app.get("/api/drops", (req, res) => {

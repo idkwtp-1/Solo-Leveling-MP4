@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { ARTIST, type Gate, type Track } from "@/lib/shadow-data";
 import { cn } from "@/lib/utils";
-import { Play, Shuffle } from "lucide-react";
+import { Play, Shuffle, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 
 type Props = {
   gate: Gate;
@@ -11,6 +13,7 @@ type Props = {
   cachedTrackIds?: Set<string>;
   onReassign?: (trackId: string, gateId: string) => void;
   onUnassign?: (trackId: string) => void;
+  onDelete?: (trackId: string) => void;
   gates?: Gate[];
   onClose?: () => void;
   onGateShuffle?: () => void;
@@ -25,10 +28,13 @@ export function TrackList({
   cachedTrackIds = new Set(),
   onReassign,
   onUnassign,
+  onDelete,
   gates,
   onClose,
   onGateShuffle,
 }: Props) {
+  const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
@@ -172,6 +178,20 @@ export function TrackList({
                       >
                         UNBIND
                       </button>
+
+                      {/* Delete Track Button */}
+                      {onDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTrackToDelete(t);
+                          }}
+                          title="Delete track permanently"
+                          className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 p-1 rounded-sm transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -180,6 +200,24 @@ export function TrackList({
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!trackToDelete}
+        onOpenChange={(open) => !open && setTrackToDelete(null)}
+        title="PURGE ESSENCE PERMANENTLY?"
+        description={
+          trackToDelete
+            ? `WARNING: Deleting "${trackToDelete.title}" will permanently remove its audio file and system bindings. Proceed?`
+            : ""
+        }
+        confirmText="PURGE TRACK"
+        cancelText="ABORT"
+        onConfirm={() => {
+          if (trackToDelete && onDelete) {
+            onDelete(trackToDelete.id);
+          }
+        }}
+      />
     </section>
   );
 }

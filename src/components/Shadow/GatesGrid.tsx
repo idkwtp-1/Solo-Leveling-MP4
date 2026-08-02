@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { type Gate } from "@/lib/shadow-data";
 import { cn } from "@/lib/utils";
-import { Shuffle } from "lucide-react";
+import { Shuffle, Plus, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 
 type Props = {
   gates: Gate[];
@@ -10,6 +12,8 @@ type Props = {
   cachedTrackIds?: Set<string>;
   globalShuffleActive?: boolean;
   onGlobalShuffle?: () => void;
+  onCreateGate?: () => void;
+  onDeleteGate?: (gateId: string) => void;
 };
 
 export function GatesGrid({
@@ -20,7 +24,10 @@ export function GatesGrid({
   cachedTrackIds = new Set(),
   globalShuffleActive = false,
   onGlobalShuffle,
+  onCreateGate,
+  onDeleteGate,
 }: Props) {
+  const [gateToDelete, setGateToDelete] = useState<Gate | null>(null);
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -40,6 +47,15 @@ export function GatesGrid({
             >
               <Shuffle className="h-2.5 w-2.5" />
               SYSTEM SHUFFLE
+            </button>
+          )}
+          {onCreateGate && (
+            <button
+              onClick={onCreateGate}
+              className="flex items-center gap-1.5 px-2.5 py-0.5 border border-primary/50 text-primary hover:bg-primary/10 rounded-sm font-mono text-[9px] tracking-wider transition-all duration-300 cursor-pointer tap-press"
+            >
+              <Plus className="h-2.5 w-2.5" />
+              AWAKEN GATE
             </button>
           )}
         </div>
@@ -88,18 +104,32 @@ export function GatesGrid({
                   <span className="font-mono text-[10px] text-primary/80">
                     {g.code}
                   </span>
-                  <span
-                    className={cn(
-                      "font-mono text-[10px] px-1.5 py-0.5 border",
-                      g.rank === "S-RANK"
-                        ? "border-shadow text-shadow"
-                        : g.rank === "??"
-                          ? "border-primary text-primary animate-flicker"
-                          : "border-border text-muted-foreground",
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "font-mono text-[10px] px-1.5 py-0.5 border",
+                        g.rank === "S-RANK"
+                          ? "border-shadow text-shadow"
+                          : g.rank === "??"
+                            ? "border-primary text-primary animate-flicker"
+                            : "border-border text-muted-foreground",
+                      )}
+                    >
+                      {g.rank}
+                    </span>
+                    {onDeleteGate && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setGateToDelete(g);
+                        }}
+                        title="Delete Gate"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-400 text-muted-foreground transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     )}
-                  >
-                    {g.rank}
-                  </span>
+                  </div>
                 </div>
                 <div>
                   <div className="font-display text-sm sm:text-base font-bold leading-tight">
@@ -114,6 +144,24 @@ export function GatesGrid({
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={!!gateToDelete}
+        onOpenChange={(open) => !open && setGateToDelete(null)}
+        title="COLLAPSE GATE ARRAY?"
+        description={
+          gateToDelete
+            ? `WARNING: Deleting Gate "${gateToDelete.name}" will unassign all its tracks back to essence storage. Proceed?`
+            : ""
+        }
+        confirmText="DELETE GATE"
+        cancelText="ABORT"
+        onConfirm={() => {
+          if (gateToDelete && onDeleteGate) {
+            onDeleteGate(gateToDelete.id);
+          }
+        }}
+      />
     </section>
   );
 }

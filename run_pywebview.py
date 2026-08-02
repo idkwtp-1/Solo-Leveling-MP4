@@ -55,10 +55,10 @@ def wait_for_port(port, timeout=20):
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
                 return True
         except (socket.timeout, ConnectionRefusedError):
-            time.sleep(0.5)
+            time.sleep(0.1)
     return False
 
 def main():

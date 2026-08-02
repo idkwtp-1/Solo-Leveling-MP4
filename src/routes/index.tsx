@@ -24,6 +24,8 @@ import { AnimatedBackground } from "@/components/Shadow/AnimatedBackground";
 import { SettingsDrawer } from "@/components/Shadow/SettingsDrawer";
 import { toast } from "sonner";
 import { ExitConfirmDialog } from "@/components/Shadow/ExitConfirmDialog";
+import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
+import { Play, Trash2, Search, X } from "lucide-react";
 import { YouTubeSearchDrawer } from "@/components/Shadow/YouTubeSearchDrawer";
 import { GlobalDownloadProgress } from "@/components/Shadow/GlobalDownloadProgress";
 
@@ -150,7 +152,7 @@ function ShadowPlayerPage() {
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
 
   // TanStack Query to fetch gates, fallback to static mock data
-  const { data: gatesData } = useQuery<Gate[]>({
+  const { data: gatesData, refetch: refetchGates } = useQuery<Gate[]>({
     queryKey: ["gates"],
     queryFn: fetchGates,
     retry: false,
@@ -269,6 +271,66 @@ function ShadowPlayerPage() {
     }
   };
 
+  const handleDeleteTrack = async (trackId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/tracks/${trackId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("SYSTEM: Track purged from library");
+        refetchTracks();
+        refetchAssignments();
+      } else {
+        toast.error("Failed to delete track");
+      }
+    } catch (e) {
+      console.error("Failed to delete track:", e);
+      toast.error("Error connecting to server");
+    }
+  };
+
+  const handleCreateGate = async () => {
+    const name = window.prompt("ENTER NEW GATE NAME (e.g. CYBERPUNK MIX):");
+    if (!name || !name.trim()) return;
+    const rank = window.prompt("ENTER GATE RANK (e.g. S-RANK, A-RANK, B-RANK):", "S-RANK") || "S-RANK";
+
+    try {
+      const res = await fetch(`${API_BASE}/api/gates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), rank: rank.trim() }),
+      });
+      if (res.ok) {
+        toast.success(`SYSTEM: GATE [${name.trim().toUpperCase()}] AWAKENED`);
+        refetchGates();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to create gate");
+      }
+    } catch (e) {
+      console.error("Failed to create gate:", e);
+      toast.error("Error creating gate");
+    }
+  };
+
+  const handleDeleteGate = async (gateId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/gates/${gateId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("SYSTEM: Gate closed and removed");
+        refetchGates();
+        refetchAssignments();
+      } else {
+        toast.error("Failed to delete gate");
+      }
+    } catch (e) {
+      console.error("Failed to delete gate:", e);
+      toast.error("Error deleting gate");
+    }
+  };
+
   const baseGates = gatesData || GATES;
 
   const gates = useMemo(() => {
@@ -288,6 +350,8 @@ function ShadowPlayerPage() {
   const unassignedTracks = useMemo(() => {
     return trackInventory.filter((t) => !assignments[t.id]);
   }, [assignments, trackInventory]);
+
+
 
   const allGateTracks = useMemo(() => {
     const seen = new Set<string>();
@@ -371,7 +435,7 @@ function ShadowPlayerPage() {
   useEffect(() => {
     if (!isLocalApp) return;
 
-    let prevDownloads: Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus> = {};
+    const prevDownloads: Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus> = {};
 
     const fetchDownloads = async () => {
       try {
@@ -391,9 +455,9 @@ function ShadowPlayerPage() {
             triggerRefresh = true;
             toast.success(`SYSTEM: "${item.title}" successfully added and synced!`);
           }
+          prevDownloads[item.videoId] = item;
         });
 
-        prevDownloads = newDownloads;
         setGlobalDownloads(newDownloads);
 
         if (triggerRefresh) {
@@ -1682,6 +1746,8 @@ function ShadowPlayerPage() {
                           cachedTrackIds={cachedTrackIds}
                           globalShuffleActive={globalShuffleActive}
                           onGlobalShuffle={handleGlobalShuffle}
+                          onCreateGate={isLocalApp ? handleCreateGate : undefined}
+                          onDeleteGate={isLocalApp ? handleDeleteGate : undefined}
                         />
                         <AnimatePresence mode="wait">
                           {activeGateId && (
@@ -1700,6 +1766,7 @@ function ShadowPlayerPage() {
                                 cachedTrackIds={cachedTrackIds}
                                 onReassign={handleAssignTrack}
                                 onUnassign={handleUnassignTrack}
+                                onDelete={isLocalApp ? handleDeleteTrack : undefined}
                                 gates={gates}
                                 onClose={() => setActiveGateId(null)}
                                 onGateShuffle={handleGateShuffle}
@@ -1708,7 +1775,7 @@ function ShadowPlayerPage() {
                           )}
                         </AnimatePresence>
                       </div>
-                      <div className="lg:sticky lg:top-8 self-start space-y-6">
+                      <div className="lg:sticky lg:top-8 self-start space-y-6 min-w-0">
                         <StatusWindow
                           track={activeTrack}
                           playing={playing}
@@ -1726,6 +1793,8 @@ function ShadowPlayerPage() {
                               tracks={unassignedTracks}
                               gates={gates}
                               onAssign={handleAssignTrack}
+                              onPlay={handlePlay}
+                              onDelete={handleDeleteTrack}
                             />
                           )}
                         </AnimatePresence>
@@ -1879,9 +1948,13 @@ type UnassignedPanelProps = {
   tracks: Track[];
   gates: Gate[];
   onAssign: (trackId: string, gateId: string) => void;
+  onPlay: (t: Track) => void;
+  onDelete: (trackId: string) => void;
 };
 
-function UnassignedPanel({ tracks, gates, onAssign }: UnassignedPanelProps) {
+function UnassignedPanel({ tracks, gates, onAssign, onPlay, onDelete }: UnassignedPanelProps) {
+  const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
+
   return (
     <motion.aside
       initial={{ opacity: 0, height: 0 }}
@@ -1915,8 +1988,17 @@ function UnassignedPanel({ tracks, gates, onAssign }: UnassignedPanelProps) {
             >
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="font-display text-sm font-semibold text-foreground truncate">
-                    {track.title}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <button
+                      onClick={() => onPlay(track)}
+                      className="p-1 rounded-sm border border-primary/40 hover:border-primary hover:bg-primary/20 text-primary transition-all cursor-pointer shrink-0"
+                      title="Preview Track"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                    </button>
+                    <div className="font-display text-sm font-semibold text-foreground truncate">
+                      {track.title}
+                    </div>
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground whitespace-nowrap">
                     {track.duration}
@@ -1924,7 +2006,7 @@ function UnassignedPanel({ tracks, gates, onAssign }: UnassignedPanelProps) {
                 </div>
 
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-[9px] text-muted-foreground tracking-[0.1em] uppercase">
+                  <span className="font-mono text-[9px] text-muted-foreground tracking-[0.1em] uppercase shrink-0">
                     Select Gate:
                   </span>
                   <select
@@ -1949,12 +2031,37 @@ function UnassignedPanel({ tracks, gates, onAssign }: UnassignedPanelProps) {
                       </option>
                     ))}
                   </select>
+                  <button
+                    onClick={() => setTrackToDelete(track)}
+                    title="Delete Track"
+                    className="p-1 rounded-sm border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 transition-all cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
+
+      <ConfirmDialog
+        open={!!trackToDelete}
+        onOpenChange={(open) => !open && setTrackToDelete(null)}
+        title="PURGE ESSENCE PERMANENTLY?"
+        description={
+          trackToDelete
+            ? `WARNING: Deleting "${trackToDelete.title}" will permanently remove its audio file and system bindings. Proceed?`
+            : ""
+        }
+        confirmText="PURGE TRACK"
+        cancelText="ABORT"
+        onConfirm={() => {
+          if (trackToDelete && onDelete) {
+            onDelete(trackToDelete.id);
+          }
+        }}
+      />
     </motion.aside>
   );
 }
