@@ -1878,7 +1878,7 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-[60]"
+      className="pointer-events-none fixed inset-0 z-[9999]"
       style={{ mixBlendMode: "screen" }}
     />
   );

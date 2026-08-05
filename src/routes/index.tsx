@@ -226,7 +226,24 @@ function ShadowPlayerPage() {
 
   useEffect(() => {
     if (assignmentsData && Object.keys(assignmentsData).length > 0) {
-      setAssignments(assignmentsData);
+      setAssignments((prev) => {
+        let localState = prev;
+        try {
+          const stored = localStorage.getItem("slplayer-track-assignments");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              localState = parsed;
+            }
+          }
+        } catch {}
+        const merged = { ...assignmentsData, ...localState };
+        localStorage.setItem(
+          "slplayer-track-assignments",
+          JSON.stringify(merged),
+        );
+        return merged;
+      });
     }
   }, [assignmentsData]);
 

@@ -536,6 +536,22 @@ app.get("/api/assignments", (req, res) => {
   res.json(data);
 });
 
+function runAssignmentsGitSync() {
+  console.log("[SLPlayer Backend] Starting Git Sync for assignments.json");
+  const gitDir = path.join(__dirname, "..");
+  exec(
+    'git add backend/media/assignments.json && git commit -m "sync: update track assignments" && git push',
+    { cwd: gitDir },
+    (error) => {
+      if (error) {
+        console.warn("[SLPlayer Backend] Assignment git sync failed:", error.message);
+      } else {
+        console.log("[SLPlayer Backend] Assignment git sync complete!");
+      }
+    },
+  );
+}
+
 app.post("/api/assignments", express.json(), (req, res) => {
   const { trackId, gateId } = req.body;
   const assignments = loadAssignments();
@@ -549,6 +565,7 @@ app.post("/api/assignments", express.json(), (req, res) => {
   try {
     fs.writeFileSync(ASSIGNMENTS_PATH, JSON.stringify(assignments, null, 2));
     res.json(assignments);
+    runAssignmentsGitSync();
   } catch (err) {
     res.status(500).json({ error: "Failed to save assignments" });
   }

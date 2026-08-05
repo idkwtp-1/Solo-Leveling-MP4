@@ -33,7 +33,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full border border-border/80 bg-background/95 backdrop-blur-md max-w-[420px] p-6 shadow-[0_0_50px_rgba(138,43,226,0.15)] neon-border font-sans z-[100]">
+      <AlertDialogContent className="z-[100] w-full max-w-[420px] border border-border/80 bg-background/95 backdrop-blur-md p-6 shadow-[0_0_50px_rgba(138,43,226,0.15)] neon-border font-sans">
         {/* Decorative Top Line */}
         <div
           className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${
@@ -71,7 +71,6 @@ export function ConfirmDialog({
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
-            autoFocus
             onClick={(e) => {
               e.preventDefault();
               onConfirm();

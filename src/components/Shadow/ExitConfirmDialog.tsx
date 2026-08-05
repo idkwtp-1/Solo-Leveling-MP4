@@ -31,7 +31,7 @@ export function ExitConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full border border-border/80 bg-background/95 backdrop-blur-md max-w-[420px] p-6 shadow-[0_0_50px_rgba(138,43,226,0.15)] neon-border font-sans">
+      <AlertDialogContent className="z-[100] w-full max-w-[420px] border border-border/80 bg-background/95 backdrop-blur-md p-6 shadow-[0_0_50px_rgba(138,43,226,0.15)] neon-border font-sans">
         {/* Decorative Top Line/Bar */}
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
 
@@ -54,7 +54,6 @@ export function ExitConfirmDialog({
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            autoFocus
             onClick={handleExit}
             className="flex-1 font-mono text-xs tracking-wider uppercase bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-200 hover:text-white shadow-[0_0_15px_rgba(239,68,68,0.25)] cursor-pointer"
           >
