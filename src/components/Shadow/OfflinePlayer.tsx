@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from "react";
-import { ARTIST, type Track } from "@/lib/shadow-data";
+import { useState, useRef, useMemo, useEffect } from "react";
+import { ARTIST, type Track, type Gate } from "@/lib/shadow-data";
 import { formatTime } from "@/lib/utils";
 import {
   Play,
@@ -11,11 +11,16 @@ import {
   Repeat1,
   Music2,
   WifiOff,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
   tracks: Track[];
+  gates?: Gate[];
+  activeGateId?: string | null;
+  onSelectGate?: (gateId: string | null) => void;
+  cachedTrackIds?: Set<string>;
   activeTrack: Track | null;
   playing: boolean;
   currentTime: number;
@@ -31,8 +36,22 @@ type Props = {
   onToggleRepeat: () => void;
 };
 
+const isTrackCached = (track: Track, cachedSet?: Set<string>) => {
+  if (!cachedSet || cachedSet.size === 0) return true;
+  return (
+    cachedSet.has(track.id) ||
+    (!!track.filename && cachedSet.has(track.filename)) ||
+    cachedSet.has(`${track.id}.mp3`) ||
+    cachedSet.has(`${track.id}.m4a`)
+  );
+};
+
 export function OfflinePlayer({
   tracks,
+  gates = [],
+  activeGateId = null,
+  onSelectGate,
+  cachedTrackIds,
   activeTrack,
   playing,
   currentTime,
@@ -47,15 +66,64 @@ export function OfflinePlayer({
   repeatMode,
   onToggleRepeat,
 }: Props) {
+  const [selectedGateId, setSelectedGateId] = useState<string | null>(activeGateId);
   const [searchQuery, setSearchQuery] = useState("");
   const progressBarRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
+  // Sync selected gate if activeGateId changes externally
+  useEffect(() => {
+    if (activeGateId !== undefined) {
+      setSelectedGateId(activeGateId);
+    }
+  }, [activeGateId]);
+
+  // Compute non-empty gates that have at least one cached track
+  const offlineGates = useMemo(() => {
+    if (!gates || gates.length === 0) return [];
+    return gates
+      .map((gate) => {
+        const availableTracks = gate.tracks.filter((t) =>
+          isTrackCached(t, cachedTrackIds),
+        );
+        return {
+          ...gate,
+          tracks: availableTracks,
+        };
+      })
+      .filter((gate) => gate.tracks.length > 0);
+  }, [gates, cachedTrackIds]);
+
+  // If selectedGateId is no longer in offlineGates, reset to null ("ALL")
+  useEffect(() => {
+    if (
+      selectedGateId &&
+      offlineGates.length > 0 &&
+      !offlineGates.some((g) => g.id === selectedGateId)
+    ) {
+      setSelectedGateId(null);
+      onSelectGate?.(null);
+    }
+  }, [selectedGateId, offlineGates, onSelectGate]);
+
+  // Available tracks based on group selection
+  const baseTracks = useMemo(() => {
+    if (!selectedGateId) {
+      return tracks.filter((t) => isTrackCached(t, cachedTrackIds));
+    }
+    const current = offlineGates.find((g) => g.id === selectedGateId);
+    return current ? current.tracks : tracks.filter((t) => isTrackCached(t, cachedTrackIds));
+  }, [selectedGateId, offlineGates, tracks, cachedTrackIds]);
+
+  const totalCachedCount = useMemo(() => {
+    return tracks.filter((t) => isTrackCached(t, cachedTrackIds)).length;
+  }, [tracks, cachedTrackIds]);
+
   const filteredTracks = useMemo(() => {
-    if (!searchQuery.trim()) return tracks;
+    if (!searchQuery.trim()) return baseTracks;
     const q = searchQuery.toLowerCase();
-    return tracks.filter((t) => t.title.toLowerCase().includes(q));
-  }, [tracks, searchQuery]);
+    return baseTracks.filter((t) => t.title.toLowerCase().includes(q));
+  }, [baseTracks, searchQuery]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -126,6 +194,95 @@ export function OfflinePlayer({
           </div>
         </div>
       </header>
+
+      {/* ── Gate / Group Selector Bar ── */}
+      {offlineGates.length > 0 && (
+        <div className="px-4 pt-2.5 pb-1 max-w-2xl mx-auto w-full">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {/* "ALL" Chip */}
+            <button
+              onClick={() => {
+                setSelectedGateId(null);
+                onSelectGate?.(null);
+              }}
+              className={cn(
+                "shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded border font-mono text-[10px] tracking-wider transition-all cursor-pointer select-none",
+                selectedGateId === null
+                  ? "border-primary bg-primary/15 text-primary shadow-[0_0_10px_rgba(0,210,255,0.3)] font-bold"
+                  : "border-border/60 bg-surface/40 text-muted-foreground hover:border-border hover:text-foreground",
+              )}
+            >
+              <Layers className="h-3 w-3" />
+              <span>ALL TRACKS</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.2 text-[9px] rounded font-bold",
+                  selectedGateId === null
+                    ? "bg-primary text-black"
+                    : "bg-surface text-muted-foreground border border-border/40",
+                )}
+              >
+                {totalCachedCount}
+              </span>
+            </button>
+
+            {/* Non-empty Gate Chips */}
+            {offlineGates.map((g) => {
+              const isSelected = selectedGateId === g.id;
+              const isSRank = g.rank === "S-RANK";
+              const isBoss = g.id === "boss";
+
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => {
+                    setSelectedGateId(g.id);
+                    onSelectGate?.(g.id);
+                  }}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded border font-mono text-[10px] tracking-wider transition-all cursor-pointer select-none",
+                    isSelected
+                      ? isBoss
+                        ? "border-red-500 bg-red-950/40 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.4)] font-bold"
+                        : isSRank
+                          ? "border-purple-500 bg-purple-950/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)] font-bold"
+                          : "border-primary bg-primary/15 text-primary shadow-[0_0_10px_rgba(0,210,255,0.3)] font-bold"
+                      : "border-border/60 bg-surface/40 text-muted-foreground hover:border-border hover:text-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-[8px] font-bold px-1 py-0.2 rounded border",
+                      isBoss
+                        ? "border-red-500/60 text-red-400 bg-red-950/60"
+                        : isSRank
+                          ? "border-purple-500/60 text-purple-400 bg-purple-950/60"
+                          : "border-border text-muted-foreground/80",
+                    )}
+                  >
+                    {g.rank}
+                  </span>
+                  <span className="truncate max-w-[130px]">{g.name}</span>
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.2 text-[9px] rounded font-bold",
+                      isSelected
+                        ? isBoss
+                          ? "bg-red-500 text-black"
+                          : isSRank
+                            ? "bg-purple-500 text-black"
+                            : "bg-primary text-black"
+                        : "bg-surface text-muted-foreground border border-border/40",
+                    )}
+                  >
+                    {g.tracks.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Search ── */}
       <div className="px-4 pt-3 pb-2 max-w-2xl mx-auto w-full">

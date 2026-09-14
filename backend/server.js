@@ -338,17 +338,46 @@ app.get("/api/youtube/downloads", (req, res) => {
   res.json(Object.values(activeDownloads));
 });
 
-// Helper function to auto Git Sync
+// Safe helper to run sequential git commands without shell interpolation
+function runGitCommands(commands, cwd, callback) {
+  let index = 0;
+  function next() {
+    if (index >= commands.length) {
+      if (callback) callback(null);
+      return;
+    }
+    const [cmd, args] = commands[index++];
+    execFile(cmd, args, { cwd }, (err) => {
+      if (err) {
+        if (callback) callback(err);
+        return;
+      }
+      next();
+    });
+  }
+  next();
+}
+
+// Helper function to auto Git Sync safely
 function runGitSync(title) {
   console.log(`[SLPlayer Backend] Starting Git Sync for track: ${title}`);
   const gitDir = path.join(__dirname, "..");
-  exec('git add -A && git commit -m "feat: add track ' + title.replace(/"/g, '\\"') + '" && git push', { cwd: gitDir }, (error, stdout, stderr) => {
-    if (error) {
-      console.error("[SLPlayer Backend] Git Sync failed:", error);
-    } else {
-      console.log("[SLPlayer Backend] Git Sync completed successfully!");
-    }
-  });
+  const commitMsg = `feat: add track ${title}`;
+  runGitCommands(
+    [
+      ["git", ["add", "-A"]],
+      ["git", ["commit", "-m", commitMsg]],
+      ["git", ["push"]],
+    ],
+    gitDir,
+    (error) => {
+      if (error) {
+        console.error("[SLPlayer Backend] Git Sync failed:", error.message || error);
+      } else {
+        console.log("[SLPlayer Backend] Git Sync completed successfully!");
+      }
+    },
+  );
 }
 
 // 3. YouTube Download
@@ -539,12 +568,16 @@ app.get("/api/assignments", (req, res) => {
 function runAssignmentsGitSync() {
   console.log("[SLPlayer Backend] Starting Git Sync for assignments.json");
   const gitDir = path.join(__dirname, "..");
-  exec(
-    'git add backend/media/assignments.json && git commit -m "sync: update track assignments" && git push',
-    { cwd: gitDir },
+  runGitCommands(
+    [
+      ["git", ["add", "backend/media/assignments.json"]],
+      ["git", ["commit", "-m", "sync: update track assignments"]],
+      ["git", ["push"]],
+    ],
+    gitDir,
     (error) => {
       if (error) {
-        console.warn("[SLPlayer Backend] Assignment git sync failed:", error.message);
+        console.warn("[SLPlayer Backend] Assignment git sync failed:", error.message || error);
       } else {
         console.log("[SLPlayer Backend] Assignment git sync complete!");
       }

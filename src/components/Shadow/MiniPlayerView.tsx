@@ -126,13 +126,13 @@ export function MiniPlayerView({
       {/* ══════════════════════════════════════════════════
           ZONE 1 — Header  (identical to MonarchPlayer top row)
       ══════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex items-center justify-between px-3 pt-2 shrink-0 select-none">
-        <span className="font-mono text-[9px] text-primary tracking-[0.3em]">
+      <div className="relative z-10 flex items-center justify-between px-3 pt-2 shrink-0 select-none pywebview-drag-region cursor-move">
+        <span className="font-mono text-[9px] text-primary tracking-[0.3em] pointer-events-none">
           SYSTEM ACTIVE // NOW PLAYING
         </span>
         <button
           onClick={onRestore}
-          className="tap-press text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+          className="tap-press text-muted-foreground hover:text-primary transition-colors cursor-pointer z-50"
           title="Restore Full Screen"
           aria-label="Restore Full Screen"
         >
@@ -145,7 +145,7 @@ export function MiniPlayerView({
           Left = PortalVisualizer orb | Right = track info
       ══════════════════════════════════════════════════ */}
       <div
-        className="relative z-10 flex items-center gap-3 px-3 pt-1 pb-1 min-h-0"
+        className="relative z-10 flex items-center gap-3 px-3 pt-1 pb-1 min-h-0 pywebview-drag-region cursor-move"
         style={{ height: "calc(100% - 110px)" }}
       >
         {/* Left column: Portal Visualizer — same component, smaller size */}

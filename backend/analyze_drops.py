@@ -60,11 +60,19 @@ def main():
     drops_data = {}
     
     if os.path.exists(OUTPUT_FILE):
-        with open(OUTPUT_FILE, 'r') as f:
-            try:
+        try:
+            with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
                 drops_data = json.load(f)
-            except:
-                pass
+        except Exception as err:
+            print(f"[WARN] Failed to parse existing {OUTPUT_FILE}: {err}")
+            bak_path = OUTPUT_FILE + ".bak"
+            try:
+                import shutil
+                shutil.copyfile(OUTPUT_FILE, bak_path)
+                print(f"[INFO] Backed up corrupted file to {bak_path}")
+            except Exception as bak_err:
+                print(f"[WARN] Failed to create backup: {bak_err}")
+            drops_data = {}
 
     files = [f for f in os.listdir(MEDIA_DIR) if f.endswith((".mp3", ".m4a", ".wav"))]
     total = len(files)

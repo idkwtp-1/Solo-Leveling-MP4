@@ -24,6 +24,7 @@ import { AnimatedBackground } from "@/components/Shadow/AnimatedBackground";
 import { SettingsDrawer } from "@/components/Shadow/SettingsDrawer";
 import { toast } from "sonner";
 import { ExitConfirmDialog } from "@/components/Shadow/ExitConfirmDialog";
+import { CreateGateDialog } from "@/components/Shadow/CreateGateDialog";
 import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 import { Play, Trash2, Search, X } from "lucide-react";
 import { YouTubeSearchDrawer } from "@/components/Shadow/YouTubeSearchDrawer";
@@ -121,9 +122,34 @@ const fetchTracks = async (): Promise<Track[]> => {
   }
 };
 
+const isMobileDevice = () => {
+  if (typeof window === "undefined") return false;
+  return (
+    window.innerWidth < 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent,
+    ) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent))
+  );
+};
+
+export const isTrackAvailableOffline = (
+  t: Track,
+  cachedSet?: Set<string>,
+): boolean => {
+  if (!cachedSet || cachedSet.size === 0) return true;
+  return (
+    cachedSet.has(t.id) ||
+    (!!t.filename && cachedSet.has(t.filename)) ||
+    cachedSet.has(`${t.id}.mp3`) ||
+    cachedSet.has(`${t.id}.m4a`)
+  );
+};
+
 function ShadowPlayerPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [isCreateGateOpen, setIsCreateGateOpen] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
@@ -150,6 +176,17 @@ function ShadowPlayerPage() {
   const isMobile = useIsMobile();
   const [isOffline, setIsOffline] = useState(false);
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
+  const [mobileAudioMode, setMobileAudioMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("slplayer-mobile-audio-mode");
+    if (stored !== null) return stored === "true";
+    return isMobileDevice();
+  });
+
+  const handleSetMobileAudioMode = (enabled: boolean) => {
+    setMobileAudioMode(enabled);
+    localStorage.setItem("slplayer-mobile-audio-mode", String(enabled));
+  };
 
   // TanStack Query to fetch gates, fallback to static mock data
   const { data: gatesData, refetch: refetchGates } = useQuery<Gate[]>({
@@ -306,11 +343,7 @@ function ShadowPlayerPage() {
     }
   };
 
-  const handleCreateGate = async () => {
-    const name = window.prompt("ENTER NEW GATE NAME (e.g. CYBERPUNK MIX):");
-    if (!name || !name.trim()) return;
-    const rank = window.prompt("ENTER GATE RANK (e.g. S-RANK, A-RANK, B-RANK):", "S-RANK") || "S-RANK";
-
+  const handleCreateGateSubmit = async (name: string, rank: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/gates`, {
         method: "POST",
@@ -491,6 +524,7 @@ function ShadowPlayerPage() {
   }, [isLocalApp, refetchTracks]);
 
   const initAudioContext = () => {
+    if (mobileAudioMode) return;
     if (audioContextRef.current) return;
     const audio = audioRef.current;
     if (!audio) return;
@@ -749,6 +783,22 @@ function ShadowPlayerPage() {
     try {
       const ids = new Set<string>();
 
+      const registerKey = (key: string) => {
+        if (!key) return;
+        ids.add(key);
+        const match = trackInventory.find(
+          (t) =>
+            t.id === key ||
+            t.filename === key ||
+            `${t.id}.mp3` === key ||
+            `${t.id}.m4a` === key,
+        );
+        if (match) {
+          ids.add(match.id);
+          if (match.filename) ids.add(match.filename);
+        }
+      };
+
       // Check audio cache (API-streamed tracks & pre-cached static media)
       try {
         const audioCache = await caches.open("slplayer-audio-v3");
@@ -757,7 +807,7 @@ function ShadowPlayerPage() {
           const url = new URL(req.url);
           const parts = url.pathname.split("/");
           const lastPart = decodeURIComponent(parts[parts.length - 1]);
-          ids.add(lastPart);
+          registerKey(lastPart);
         });
       } catch {}
 
@@ -774,7 +824,7 @@ function ShadowPlayerPage() {
             const filename = decodeURIComponent(
               url.pathname.split("/").pop() || "",
             );
-            ids.add(filename);
+            registerKey(filename);
           }
         });
       } catch {}
@@ -789,18 +839,18 @@ function ShadowPlayerPage() {
     updateCachedTracks();
     const interval = setInterval(updateCachedTracks, 4000);
     return () => clearInterval(interval);
-  }, [activeTrack, isOffline]);
+  }, [activeTrack, isOffline, trackInventory]);
 
   // Handle activeGate selection adjustment if current gate is offline-disabled
   useEffect(() => {
     if (isOffline && cachedTrackIds.size > 0 && activeGateId) {
       const activeGateHasCached = activeGate.tracks.some((t) =>
-        cachedTrackIds.has(t.id),
+        isTrackAvailableOffline(t, cachedTrackIds),
       );
       if (!activeGateHasCached) {
         // Find first gate that has cached tracks
         const fallbackGate = gates.find((g) =>
-          g.tracks.some((t) => cachedTrackIds.has(t.id)),
+          g.tracks.some((t) => isTrackAvailableOffline(t, cachedTrackIds)),
         );
         if (fallbackGate) {
           setActiveGateId(fallbackGate.id);
@@ -1138,12 +1188,14 @@ function ShadowPlayerPage() {
       audio.load();
     }
 
-    initAudioContext();
-    if (
-      audioContextRef.current &&
-      audioContextRef.current.state === "suspended"
-    ) {
-      audioContextRef.current.resume();
+    if (!mobileAudioMode) {
+      initAudioContext();
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state === "suspended"
+      ) {
+        audioContextRef.current.resume();
+      }
     }
 
     audio.play().catch((err) => {
@@ -1162,7 +1214,7 @@ function ShadowPlayerPage() {
 
   const handleGlobalShuffle = () => {
     const playable = allGateTracks.filter(
-      (t) => !isOffline || cachedTrackIds.has(t.id),
+      (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
     );
     if (playable.length === 0) {
       toast.error("SYSTEM ERROR: No tracks cached for offline use");
@@ -1180,7 +1232,7 @@ function ShadowPlayerPage() {
 
   const handleGateShuffle = () => {
     const playable = activeGate.tracks.filter(
-      (t) => !isOffline || cachedTrackIds.has(t.id),
+      (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
     );
     if (playable.length === 0) {
       toast.error("SYSTEM ERROR: No tracks available in this gate");
@@ -1199,8 +1251,9 @@ function ShadowPlayerPage() {
   const handleToggle = () => {
     if (!activeTrack) {
       const firstAvailable =
-        activeGate.tracks.find((t) => !isOffline || cachedTrackIds.has(t.id)) ||
-        activeGate.tracks[0];
+        activeGate.tracks.find(
+          (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
+        ) || activeGate.tracks[0];
       if (firstAvailable) {
         handlePlay(firstAvailable);
       }
@@ -1212,12 +1265,14 @@ function ShadowPlayerPage() {
     const audio = audioRef.current;
     if (audio) {
       if (nextPlaying) {
-        initAudioContext();
-        if (
-          audioContextRef.current &&
-          audioContextRef.current.state === "suspended"
-        ) {
-          audioContextRef.current.resume();
+        if (!mobileAudioMode) {
+          initAudioContext();
+          if (
+            audioContextRef.current &&
+            audioContextRef.current.state === "suspended"
+          ) {
+            audioContextRef.current.resume();
+          }
         }
         audio.play().catch((err) => console.warn(err));
       } else {
@@ -1243,14 +1298,23 @@ function ShadowPlayerPage() {
 
     if (globalShuffleActive || shuffle) {
       const playable = globalShuffleActive
-        ? allGateTracks.filter((t) => !isOffline || cachedTrackIds.has(t.id))
-        : (gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id)) || activeGate).tracks.filter((t) => !isOffline || cachedTrackIds.has(t.id));
+        ? allGateTracks.filter(
+            (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
+          )
+        : (
+            gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id)) ||
+            activeGate
+          ).tracks.filter(
+            (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
+          );
 
       if (playable.length > 0) {
         if (playable.length === 1) {
           nextTrack = playable[0];
         } else {
-          let unplayed = playable.filter((t) => !playedShuffleIds.includes(t.id) && t.id !== activeTrack.id);
+          let unplayed = playable.filter(
+            (t) => !playedShuffleIds.includes(t.id) && t.id !== activeTrack.id,
+          );
           let newPlayedIds = [...playedShuffleIds];
 
           if (unplayed.length === 0) {
@@ -1275,29 +1339,29 @@ function ShadowPlayerPage() {
       const currentIndex = availableTracks.findIndex(
         (t) => t.id === activeTrack.id,
       );
-        if (currentIndex !== -1) {
-          let nextIndex = (currentIndex + 1) % len;
-          let attempts = 0;
-          while (
-            isOffline &&
-            !cachedTrackIds.has(availableTracks[nextIndex].id) &&
-            attempts < len
-          ) {
-            nextIndex = (nextIndex + 1) % len;
-            attempts++;
-          }
-
-          // If auto-ended at the end of playlist and repeat is none, stop playing
-          if (isAutoEnd === true && nextIndex === 0 && repeatMode === "none") {
-            setPlaying(false);
-            if (audio) audio.pause();
-            return;
-          }
-
-          if (attempts < len) {
-            nextTrack = availableTracks[nextIndex];
-          }
+      if (currentIndex !== -1) {
+        let nextIndex = (currentIndex + 1) % len;
+        let attempts = 0;
+        while (
+          isOffline &&
+          !isTrackAvailableOffline(availableTracks[nextIndex], cachedTrackIds) &&
+          attempts < len
+        ) {
+          nextIndex = (nextIndex + 1) % len;
+          attempts++;
         }
+
+        // If auto-ended at the end of playlist and repeat is none, stop playing
+        if (isAutoEnd === true && nextIndex === 0 && repeatMode === "none") {
+          setPlaying(false);
+          if (audio) audio.pause();
+          return;
+        }
+
+        if (attempts < len) {
+          nextTrack = availableTracks[nextIndex];
+        }
+      }
     }
 
     if (nextTrack) {
@@ -1313,7 +1377,7 @@ function ShadowPlayerPage() {
 
     if (globalShuffleActive) {
       const playable = allGateTracks.filter(
-        (t) => !isOffline || cachedTrackIds.has(t.id),
+        (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
       );
       if (playable.length > 0) {
         if (playable.length === 1) {
@@ -1334,7 +1398,7 @@ function ShadowPlayerPage() {
 
       if (shuffle) {
         const playable = availableTracks.filter(
-          (t) => !isOffline || cachedTrackIds.has(t.id),
+          (t) => !isOffline || isTrackAvailableOffline(t, cachedTrackIds),
         );
         if (playable.length > 0) {
           if (playable.length === 1) {
@@ -1355,7 +1419,7 @@ function ShadowPlayerPage() {
           let attempts = 0;
           while (
             isOffline &&
-            !cachedTrackIds.has(availableTracks[prevIndex].id) &&
+            !isTrackAvailableOffline(availableTracks[prevIndex], cachedTrackIds) &&
             attempts < len
           ) {
             prevIndex = (prevIndex - 1 + len) % len;
@@ -1394,12 +1458,14 @@ function ShadowPlayerPage() {
     if (!audio) return;
 
     if (playing && activeTrack) {
-      initAudioContext();
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state === "suspended"
-      ) {
-        audioContextRef.current.resume();
+      if (!mobileAudioMode) {
+        initAudioContext();
+        if (
+          audioContextRef.current &&
+          audioContextRef.current.state === "suspended"
+        ) {
+          audioContextRef.current.resume();
+        }
       }
       audio.play().catch((err) => {
         console.warn(
@@ -1411,7 +1477,7 @@ function ShadowPlayerPage() {
     } else {
       audio.pause();
     }
-  }, [playing, activeTrack]);
+  }, [playing, activeTrack, mobileAudioMode]);
 
   // Keyboard shortcuts (Space/ESC)
   useEffect(() => {
@@ -1454,13 +1520,17 @@ function ShadowPlayerPage() {
       const currentGate =
         gates.find((g) => g.tracks.some((t) => t.id === activeTrack.id)) ||
         activeGate;
+      const base = import.meta.env.BASE_URL || "/";
+      const icon192 = new URL(`${base}icon-192.png`, window.location.href).href;
+      const icon512 = new URL(`${base}icon-512.png`, window.location.href).href;
+
       navigator.mediaSession.metadata = new MediaMetadata({
         title: activeTrack.title,
-        artist: "SLPlayer Project",
+        artist: ARTIST,
         album: currentGate.name,
         artwork: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: icon192, sizes: "192x192", type: "image/png" },
+          { src: icon512, sizes: "512x512", type: "image/png" },
         ],
       });
     } else {
@@ -1506,9 +1576,11 @@ function ShadowPlayerPage() {
     try {
       navigator.mediaSession.setActionHandler("play", () => {
         setPlaying(true);
+        audioRef.current?.play().catch(console.warn);
       });
       navigator.mediaSession.setActionHandler("pause", () => {
         setPlaying(false);
+        audioRef.current?.pause();
       });
       navigator.mediaSession.setActionHandler("previoustrack", () => {
         handlersRef.current.handlePrev();
@@ -1564,6 +1636,8 @@ function ShadowPlayerPage() {
         {/* Audio element (shared) */}
         <audio
           ref={audioRef}
+          playsInline
+          preload="auto"
           crossOrigin="anonymous"
           src={
             activeTrack
@@ -1592,6 +1666,10 @@ function ShadowPlayerPage() {
         />
         <OfflinePlayer
           tracks={trackInventory}
+          gates={gates}
+          activeGateId={activeGateId}
+          onSelectGate={setActiveGateId}
+          cachedTrackIds={cachedTrackIds}
           activeTrack={activeTrack}
           playing={playing}
           currentTime={currentTime}
@@ -1619,6 +1697,8 @@ function ShadowPlayerPage() {
       {/* HTML5 Audio Stream Instance */}
       <audio
         ref={audioRef}
+        playsInline
+        preload="auto"
         crossOrigin="anonymous"
         src={
           activeTrack
@@ -1763,7 +1843,7 @@ function ShadowPlayerPage() {
                           cachedTrackIds={cachedTrackIds}
                           globalShuffleActive={globalShuffleActive}
                           onGlobalShuffle={handleGlobalShuffle}
-                          onCreateGate={isLocalApp ? handleCreateGate : undefined}
+                          onCreateGate={isLocalApp ? () => setIsCreateGateOpen(true) : undefined}
                           onDeleteGate={isLocalApp ? handleDeleteGate : undefined}
                         />
                         <AnimatePresence mode="wait">
@@ -1919,6 +1999,8 @@ function ShadowPlayerPage() {
             setReverbEnabled={setReverbEnabled}
             normalizationEnabled={normalizationEnabled}
             setNormalizationEnabled={setNormalizationEnabled}
+            mobileAudioMode={mobileAudioMode}
+            setMobileAudioMode={handleSetMobileAudioMode}
           />
 
           <YouTubeSearchDrawer
@@ -1956,6 +2038,12 @@ function ShadowPlayerPage() {
       <ExitConfirmDialog
         open={showExitDialog}
         onOpenChange={setShowExitDialog}
+      />
+
+      <CreateGateDialog
+        open={isCreateGateOpen}
+        onOpenChange={setIsCreateGateOpen}
+        onCreateGate={handleCreateGateSubmit}
       />
     </div>
   );

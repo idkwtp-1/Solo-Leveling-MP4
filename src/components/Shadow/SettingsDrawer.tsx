@@ -20,6 +20,8 @@ type Props = {
   setReverbEnabled: (enabled: boolean) => void;
   normalizationEnabled: boolean;
   setNormalizationEnabled: (enabled: boolean) => void;
+  mobileAudioMode?: boolean;
+  setMobileAudioMode?: (enabled: boolean) => void;
 };
 
 const CURSOR_OPTIONS = [
@@ -81,6 +83,8 @@ export function SettingsDrawer({
   setReverbEnabled,
   normalizationEnabled,
   setNormalizationEnabled,
+  mobileAudioMode = false,
+  setMobileAudioMode,
 }: Props) {
   return (
     <AnimatePresence>
@@ -191,8 +195,36 @@ export function SettingsDrawer({
                 </div>
               </div>
 
-              {/* Section 3: Audio DSP EQ */}
+              {/* Section 3: Audio DSP & Playback Engine */}
               <div className="space-y-4">
+                {/* Mobile / Direct Background Audio Toggle */}
+                {setMobileAudioMode && (
+                  <div className="p-2.5 rounded bg-surface/30 border border-border/40 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-display text-[11px] text-foreground tracking-wider">
+                        <span>📱 MOBILE BACKGROUND PLAY</span>
+                        {mobileAudioMode && (
+                          <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.2 rounded border border-primary/30 font-mono">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={mobileAudioMode}
+                          onChange={(e) => setMobileAudioMode(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-7 h-4 bg-border/40 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary" />
+                      </label>
+                    </div>
+                    <div className="text-[9px] text-muted-foreground leading-snug">
+                      Streams directly to OS audio subsystem. Keeps music playing when screen is locked or outside PWA.
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between border-b border-border/10 pb-1.5">
                   <div className="flex items-center gap-2 font-display text-[11px] text-primary tracking-[0.2em]">
                     <Volume2 className="h-3 w-3" />

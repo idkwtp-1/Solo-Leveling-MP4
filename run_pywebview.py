@@ -41,12 +41,12 @@ class Api:
             self._window.restore()
             time.sleep(0.1)
             self._window.resize(300, 180)
-            self._window.set_on_top(True)
+            self._window.on_top = True
             print("[SYSTEM] Mini player active.")
         elif not is_mini and self._mini_active:
             self._mini_active = False
             # Restore always-on-top and go back to fullscreen
-            self._window.set_on_top(False)
+            self._window.on_top = False
             time.sleep(0.1)
             self._window.toggle_fullscreen()
             print("[SYSTEM] Fullscreen restored.")
@@ -73,13 +73,17 @@ def main():
     if sys.platform == "win32":
         creation_flags = 0x08000000  # CREATE_NO_WINDOW to prevent flashing CMD shell
     
-    # 1. Start the Express Backend Server (now serving both APIs and static dist/client)
+    # 1. Start the Express Backend Server directly using node
     backend_proc = None
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    server_script = os.path.join(base_dir, "backend", "server.js")
+    splash_file = os.path.join(base_dir, "backend", "splash.html")
+
     try:
         print("[SYSTEM] Booting Express backend server on port 3001...")
         backend_proc = subprocess.Popen(
-            ["npm", "run", "server"],
-            shell=True,
+            ["node", server_script],
+            cwd=base_dir,
             stdout=backend_log,
             stderr=backend_log,
             creationflags=creation_flags
@@ -90,24 +94,13 @@ def main():
             ctypes.windll.user32.MessageBoxW(0, f"Failed to start backend: {e}", "SYSTEM ERROR", 16)
         sys.exit(1)
         
-    # 2. Wait for Express backend to spin up on port 3001
-    print("[SYSTEM] Waiting for backend server to initialize...")
-    if not wait_for_port(3001, timeout=20):
-        print("[WARNING] Backend server did not respond on port 3001 within timeout.")
-        if sys.platform == "win32":
-            ctypes.windll.user32.MessageBoxW(0, "Backend server failed to start on port 3001. Please check logs/backend_server.log for details.", "SYSTEM INITIALIZATION FAILED", 16)
-        if backend_proc:
-            backend_proc.terminate()
-        sys.exit(1)
-    
-    # 3. Initialize pywebview native window wrapper
-    print("[SYSTEM] Launching native window...")
+    # 2. Initialize pywebview native window with splash screen immediately
+    print("[SYSTEM] Launching native window with holographic splash...")
     api = Api()
     try:
-        # Create pywebview window pointing to Express server serving production build
         window = webview.create_window(
             title="Shadow Player // System Online",
-            url="http://127.0.0.1:3001",
+            url=splash_file,
             width=1280,
             height=720,
             min_size=(300, 180),
@@ -117,14 +110,26 @@ def main():
             easy_drag=False,
             background_color='#0b0e14',
             js_api=api,
-            hidden=True
+            hidden=False
         )
         api.set_window(window)
- 
-        def on_loaded():
-            window.show()
-        window.events.loaded += on_loaded
-        
+
+        def init_worker():
+            print("[SYSTEM] Background worker monitoring port 3001...")
+            if wait_for_port(3001, timeout=25):
+                print("[SYSTEM] Backend server ready. Loading main interface...")
+                window.load_url("http://127.0.0.1:3001")
+            else:
+                print("[WARNING] Backend server did not respond within timeout.")
+                if sys.platform == "win32":
+                    ctypes.windll.user32.MessageBoxW(
+                        0,
+                        "Backend server failed to start on port 3001. Please check logs/backend_server.log for details.",
+                        "SYSTEM INITIALIZATION FAILED",
+                        16
+                    )
+                window.destroy()
+
         def set_custom_icon(*args):
             if sys.platform == "win32":
                 try:
@@ -160,8 +165,8 @@ def main():
  
         window.events.before_show += set_custom_icon
         
-        # Start the GUI loop
-        webview.start(debug=False)
+        # Start the GUI loop with background worker for splash-to-app transition
+        webview.start(init_worker, debug=False)
         
     finally:
         # 4. Clean up backend process on window close

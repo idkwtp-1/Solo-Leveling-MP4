@@ -38,3 +38,8 @@ backend/yt-dlp.exe
 simulate_history.cjs
 simulate_state.json
 
+# Python
+__pycache__/
+*.pyc
+
+
