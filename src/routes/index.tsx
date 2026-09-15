@@ -1339,10 +1339,10 @@ function ShadowPlayerPage() {
       const currentIndex = availableTracks.findIndex(
         (t) => t.id === activeTrack.id,
       );
-      if (currentIndex !== -1) {
-        let nextIndex = (currentIndex + 1) % len;
-        let attempts = 0;
-        while (
+      
+      let nextIndex = currentIndex !== -1 ? (currentIndex + 1) % len : 0;
+      let attempts = 0;
+      while (
           isOffline &&
           !isTrackAvailableOffline(availableTracks[nextIndex], cachedTrackIds) &&
           attempts < len
@@ -1351,23 +1351,39 @@ function ShadowPlayerPage() {
           attempts++;
         }
 
-        // If auto-ended at the end of playlist and repeat is none, stop playing
-        if (isAutoEnd === true && nextIndex === 0 && repeatMode === "none") {
-          setPlaying(false);
-          if (audio) audio.pause();
-          return;
-        }
-
-        if (attempts < len) {
-          nextTrack = availableTracks[nextIndex];
-        }
+      // If auto-ended at the end of playlist and repeat is none, stop playing
+      if (isAutoEnd === true && nextIndex === 0 && repeatMode === "none") {
+        nextTrack = null;
+      } else if (attempts < len) {
+        nextTrack = availableTracks[nextIndex];
       }
     }
 
     if (nextTrack) {
-      setActiveTrack(nextTrack);
-      setPlaying(true);
-      playTrackSync(nextTrack);
+      if (nextTrack.id === activeTrack.id) {
+        if (isAutoEnd === true && repeatMode === "none") {
+          setPlaying(false);
+          if (audio) {
+            audio.pause();
+            audio.currentTime = 0;
+          }
+        } else {
+          if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(console.warn);
+          }
+        }
+      } else {
+        setActiveTrack(nextTrack);
+        setPlaying(true);
+        playTrackSync(nextTrack);
+      }
+    } else if (isAutoEnd) {
+      setPlaying(false);
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
     }
   };
 
@@ -1414,29 +1430,36 @@ function ShadowPlayerPage() {
         const currentIndex = availableTracks.findIndex(
           (t) => t.id === activeTrack.id,
         );
-        if (currentIndex !== -1) {
-          let prevIndex = (currentIndex - 1 + len) % len;
-          let attempts = 0;
-          while (
-            isOffline &&
-            !isTrackAvailableOffline(availableTracks[prevIndex], cachedTrackIds) &&
-            attempts < len
-          ) {
-            prevIndex = (prevIndex - 1 + len) % len;
-            attempts++;
-          }
+        
+        let prevIndex = currentIndex !== -1 ? (currentIndex - 1 + len) % len : (len - 1);
+        let attempts = 0;
+        while (
+          isOffline &&
+          !isTrackAvailableOffline(availableTracks[prevIndex], cachedTrackIds) &&
+          attempts < len
+        ) {
+          prevIndex = (prevIndex - 1 + len) % len;
+          attempts++;
+        }
 
-          if (attempts < len) {
-            prevTrack = availableTracks[prevIndex];
-          }
+        if (attempts < len) {
+          prevTrack = availableTracks[prevIndex];
         }
       }
     }
 
     if (prevTrack) {
-      setActiveTrack(prevTrack);
-      setPlaying(true);
-      playTrackSync(prevTrack);
+      if (prevTrack.id === activeTrack.id) {
+        const audio = audioRef.current;
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(console.warn);
+        }
+      } else {
+        setActiveTrack(prevTrack);
+        setPlaying(true);
+        playTrackSync(prevTrack);
+      }
     }
   };
 
