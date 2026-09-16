@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   GATES,
   NEW_UNASSIGNED_TRACKS,
+  ARTIST,
   type Gate,
   type Track,
 } from "@/lib/shadow-data";
@@ -26,7 +27,7 @@ import { toast } from "sonner";
 import { ExitConfirmDialog } from "@/components/Shadow/ExitConfirmDialog";
 import { CreateGateDialog } from "@/components/Shadow/CreateGateDialog";
 import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
-import { Play, Trash2, Search, X } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
 import { YouTubeSearchDrawer } from "@/components/Shadow/YouTubeSearchDrawer";
 import { GlobalDownloadProgress } from "@/components/Shadow/GlobalDownloadProgress";
 
@@ -1339,10 +1340,10 @@ function ShadowPlayerPage() {
       const currentIndex = availableTracks.findIndex(
         (t) => t.id === activeTrack.id,
       );
-      
-      let nextIndex = currentIndex !== -1 ? (currentIndex + 1) % len : 0;
-      let attempts = 0;
-      while (
+      if (currentIndex !== -1) {
+        let nextIndex = (currentIndex + 1) % len;
+        let attempts = 0;
+        while (
           isOffline &&
           !isTrackAvailableOffline(availableTracks[nextIndex], cachedTrackIds) &&
           attempts < len
@@ -1351,11 +1352,34 @@ function ShadowPlayerPage() {
           attempts++;
         }
 
-      // If auto-ended at the end of playlist and repeat is none, stop playing
-      if (isAutoEnd === true && nextIndex === 0 && repeatMode === "none") {
-        nextTrack = null;
-      } else if (attempts < len) {
-        nextTrack = availableTracks[nextIndex];
+        // If auto-ended at the end of playlist and repeat is none, stop playing
+        if (isAutoEnd === true && nextIndex === 0 && repeatMode === "none") {
+          setPlaying(false);
+          if (audio) {
+            audio.pause();
+            audio.currentTime = 0;
+          }
+          return;
+        }
+
+        if (attempts < len) {
+          nextTrack = availableTracks[nextIndex];
+        }
+      } else {
+        // If track is not in currentGate, pick the first playable track in availableTracks
+        let nextIndex = 0;
+        let attempts = 0;
+        while (
+          isOffline &&
+          !isTrackAvailableOffline(availableTracks[nextIndex], cachedTrackIds) &&
+          attempts < len
+        ) {
+          nextIndex = (nextIndex + 1) % len;
+          attempts++;
+        }
+        if (attempts < len) {
+          nextTrack = availableTracks[nextIndex];
+        }
       }
     }
 
@@ -1370,7 +1394,7 @@ function ShadowPlayerPage() {
         } else {
           if (audio) {
             audio.currentTime = 0;
-            audio.play().catch(console.warn);
+            audio.play().catch((err) => console.warn("Track loop replay failed:", err));
           }
         }
       } else {
@@ -1430,20 +1454,21 @@ function ShadowPlayerPage() {
         const currentIndex = availableTracks.findIndex(
           (t) => t.id === activeTrack.id,
         );
-        
-        let prevIndex = currentIndex !== -1 ? (currentIndex - 1 + len) % len : (len - 1);
-        let attempts = 0;
-        while (
-          isOffline &&
-          !isTrackAvailableOffline(availableTracks[prevIndex], cachedTrackIds) &&
-          attempts < len
-        ) {
-          prevIndex = (prevIndex - 1 + len) % len;
-          attempts++;
-        }
+        if (currentIndex !== -1) {
+          let prevIndex = (currentIndex - 1 + len) % len;
+          let attempts = 0;
+          while (
+            isOffline &&
+            !isTrackAvailableOffline(availableTracks[prevIndex], cachedTrackIds) &&
+            attempts < len
+          ) {
+            prevIndex = (prevIndex - 1 + len) % len;
+            attempts++;
+          }
 
-        if (attempts < len) {
-          prevTrack = availableTracks[prevIndex];
+          if (attempts < len) {
+            prevTrack = availableTracks[prevIndex];
+          }
         }
       }
     }
@@ -1453,7 +1478,7 @@ function ShadowPlayerPage() {
         const audio = audioRef.current;
         if (audio) {
           audio.currentTime = 0;
-          audio.play().catch(console.warn);
+          audio.play().catch((err) => console.warn("Prev track loop replay failed:", err));
         }
       } else {
         setActiveTrack(prevTrack);
