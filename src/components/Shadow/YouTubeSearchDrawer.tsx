@@ -72,7 +72,7 @@ export function YouTubeSearchDrawer({ isOpen, onClose, apiBase, downloads }: Pro
         body: JSON.stringify({ videoId: item.id, title: item.title }),
       });
       if (!res.ok) throw new Error("Download registration failed");
-      const data = await res.json();
+      await res.json();
       
       // The global poller in index.tsx will pick up the new queued item within 2 seconds.
       // We don't need to mutate local state anymore.
