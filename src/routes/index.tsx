@@ -30,6 +30,10 @@ import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 import { Play, Trash2 } from "lucide-react";
 import { YouTubeSearchDrawer } from "@/components/Shadow/YouTubeSearchDrawer";
 import { GlobalDownloadProgress } from "@/components/Shadow/GlobalDownloadProgress";
+import {
+  GlobalOfflineProgress,
+  type OfflineCacheProgress,
+} from "@/components/Shadow/GlobalOfflineProgress";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -456,6 +460,8 @@ function ShadowPlayerPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [cursorMode, setCursorMode] = useState("monarch");
   const [globalDownloads, setGlobalDownloads] = useState<Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus>>({});
+  const [offlineCacheProgress, setOfflineCacheProgress] =
+    useState<OfflineCacheProgress | null>(null);
 
   const isLocalApp = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -759,10 +765,36 @@ function ShadowPlayerPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const handleSwMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      if (event.data.type === "PRECACHE_PROGRESS") {
+        setOfflineCacheProgress({
+          cached: event.data.cached ?? 0,
+          skipped: event.data.skipped ?? 0,
+          total: event.data.total ?? 0,
+        });
+      } else if (event.data.type === "PRECACHE_COMPLETE") {
+        setOfflineCacheProgress(null);
+        updateCachedTracks();
+        const cachedCount = event.data.cached ?? 0;
+        const skippedCount = event.data.skipped ?? 0;
+        if (cachedCount > 0) {
+          toast.success(
+            `SYSTEM: Offline cache synced (${cachedCount} new, ${skippedCount} cached)`,
+          );
+        } else {
+          toast.success(
+            `SYSTEM: Offline cache verified (${skippedCount} tracks ready)`,
+          );
+        }
+      }
+    };
+
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register(`${import.meta.env.BASE_URL}sw.js`)
         .catch((err) => console.error("[SLPlayer] ServiceWorker failed:", err));
+      navigator.serviceWorker.addEventListener("message", handleSwMessage);
     }
 
     const handleOnline = () => setIsOffline(false);
@@ -775,8 +807,34 @@ function ShadowPlayerPage() {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+      }
     };
   }, []);
+
+  const handleSyncOfflineCache = async () => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      toast.error("SYSTEM ERROR: Service Worker not supported");
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const target = navigator.serviceWorker.controller || reg.active;
+      if (target) {
+        setOfflineCacheProgress({
+          cached: 0,
+          skipped: 0,
+          total: trackInventory.length || 1,
+        });
+        target.postMessage({ type: "PRECACHE_MEDIA" });
+      } else {
+        toast.error("SYSTEM ERROR: Offline Service Worker not ready yet");
+      }
+    } catch (e) {
+      console.error("[SLPlayer] Failed to trigger offline cache sync:", e);
+    }
+  };
 
   // Update cached tracks list scanned from Service Worker
   const updateCachedTracks = async () => {
@@ -1869,6 +1927,8 @@ function ShadowPlayerPage() {
                 <SystemHeader
                   onOpenSettings={() => setIsSettingsOpen(true)}
                   onOpenSearch={() => setIsSearchOpen(true)}
+                  onSyncCache={handleSyncOfflineCache}
+                  isSyncingCache={offlineCacheProgress !== null}
                   showSearchButton={isLocalApp}
                 />
 
@@ -2058,6 +2118,7 @@ function ShadowPlayerPage() {
             downloads={globalDownloads}
           />
           <GlobalDownloadProgress downloads={globalDownloads} />
+          <GlobalOfflineProgress progress={offlineCacheProgress} />
         </>
       )}
 

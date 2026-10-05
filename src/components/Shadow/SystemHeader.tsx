@@ -1,14 +1,18 @@
-import { Settings, Search } from "lucide-react";
+import { Settings, Search, CloudDownload } from "lucide-react";
 
 type Props = {
   onOpenSettings?: () => void;
   onOpenSearch?: () => void;
+  onSyncCache?: () => void;
+  isSyncingCache?: boolean;
   showSearchButton?: boolean;
 };
 
 export function SystemHeader({
   onOpenSettings,
   onOpenSearch,
+  onSyncCache,
+  isSyncingCache = false,
   showSearchButton = false,
 }: Props) {
   return (
@@ -31,17 +35,36 @@ export function SystemHeader({
           {showSearchButton && onOpenSearch && (
             <button
               onClick={onOpenSearch}
-              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer"
+              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all duration-200 relative z-20 cursor-pointer"
               title="Search & Download YouTube Music"
               aria-label="YouTube Search"
             >
               <Search className="h-4 w-4" />
             </button>
           )}
+          {onSyncCache && (
+            <button
+              onClick={onSyncCache}
+              disabled={isSyncingCache}
+              className={`group tap-press p-1.5 rounded-sm border bg-background/50 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all duration-200 relative z-20 cursor-pointer ${
+                isSyncingCache
+                  ? "border-primary text-primary animate-pulse"
+                  : "border-border"
+              }`}
+              title={
+                isSyncingCache
+                  ? "Offline Cache Sync in Progress..."
+                  : "Sync Offline Audio Cache"
+              }
+              aria-label="Sync Offline Audio Cache"
+            >
+              <CloudDownload className="h-4 w-4" />
+            </button>
+          )}
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary transition-all duration-200 relative z-20 cursor-pointer"
+              className="group tap-press p-1.5 rounded-sm border border-border bg-background/50 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all duration-200 relative z-20 cursor-pointer"
               title="System Settings"
               aria-label="Settings"
             >

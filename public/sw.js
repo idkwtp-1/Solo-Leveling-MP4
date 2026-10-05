@@ -54,8 +54,25 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// ─── Pre-cache all media files for offline use ───
+// ─── Broadcast helper to notify all open clients ───
+async function broadcastToClients(message) {
+  try {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    clients.forEach((client) => {
+      client.postMessage(message);
+    });
+  } catch (err) {
+    console.warn("[SW] Failed to broadcast message:", err);
+  }
+}
+
+let isPrecaching = false;
+
+// ─── Pre-cache all media files for offline use (Parallel Pool) ───
 async function precacheAllMedia() {
+  if (isPrecaching) return;
+  isPrecaching = true;
+
   try {
     const inventoryUrl = BASE_PATH + "media/tracks_inventory.json";
     const res = await fetch(inventoryUrl);
@@ -64,51 +81,85 @@ async function precacheAllMedia() {
       return;
     }
     const tracks = await res.json();
+    const validTracks = tracks.filter((t) => t && t.filename);
+    const total = validTracks.length;
     const cache = await caches.open(AUDIO_CACHE);
 
     let cached = 0;
     let skipped = 0;
+    let currentIndex = 0;
+    const CONCURRENCY = 5;
 
-    for (const track of tracks) {
-      if (!track.filename) continue;
-      const url = BASE_PATH + "media/" + track.filename;
+    await broadcastToClients({
+      type: "PRECACHE_PROGRESS",
+      cached,
+      skipped,
+      total,
+    });
 
-      // Skip if already cached
-      const existing = await cache.match(url);
-      if (existing) {
-        skipped++;
-        continue;
-      }
+    async function worker() {
+      while (currentIndex < validTracks.length) {
+        const track = validTracks[currentIndex++];
+        const url = BASE_PATH + "media/" + track.filename;
 
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          await cache.put(url, response);
-          cached++;
+        try {
+          const existing = await cache.match(url);
+          if (existing) {
+            skipped++;
+            await broadcastToClients({
+              type: "PRECACHE_PROGRESS",
+              cached,
+              skipped,
+              total,
+            });
+            continue;
+          }
+
+          const response = await fetch(url);
+          if (response.ok) {
+            await cache.put(url, response);
+            cached++;
+          }
+        } catch (err) {
+          console.warn(`[SW] Failed to pre-cache: ${track.filename}`, err);
         }
-      } catch (err) {
-        console.warn(`[SW] Failed to pre-cache: ${track.filename}`, err);
+
+        await broadcastToClients({
+          type: "PRECACHE_PROGRESS",
+          cached,
+          skipped,
+          total,
+        });
       }
     }
 
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, validTracks.length) },
+      () => worker(),
+    );
+    await Promise.all(workers);
+
     console.log(
-      `[SW] Pre-cache complete: ${cached} new, ${skipped} already cached`,
+      `[SW] Pre-cache complete: ${cached} new, ${skipped} already cached (total ${total})`,
     );
 
-    // Notify all clients that pre-caching is done
-    const clients = await self.clients.matchAll();
-    clients.forEach((client) => {
-      client.postMessage({ type: "PRECACHE_COMPLETE", cached, skipped });
+    await broadcastToClients({
+      type: "PRECACHE_COMPLETE",
+      cached,
+      skipped,
+      total,
     });
   } catch (e) {
     console.warn("[SW] Pre-cache media failed:", e);
+  } finally {
+    isPrecaching = false;
   }
 }
 
 // Listen for pre-cache requests from the frontend
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "PRECACHE_MEDIA") {
-    precacheAllMedia();
+    event.waitUntil(precacheAllMedia());
   }
 });
 
