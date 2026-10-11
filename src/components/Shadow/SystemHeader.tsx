@@ -22,10 +22,10 @@ export function SystemHeader({
           <span className="absolute inset-0 rounded-full bg-primary blur-md opacity-80" />
           <span className="relative h-2.5 w-2.5 rounded-full bg-primary animate-flicker" />
         </span>
-        <h1 className="font-display text-lg sm:text-2xl font-bold text-glow-blue">
-          SYSTEM ONLINE
-          <span className="text-shadow text-glow-purple mx-2">//</span>
-          <span className="text-foreground">SHADOW PLAYER</span>
+        <h1 className="font-display text-sm sm:text-lg lg:text-2xl font-bold text-glow-blue leading-tight flex flex-wrap items-center">
+          <span className="whitespace-nowrap">SYSTEM ONLINE</span>
+          <span className="text-shadow text-glow-purple mx-1.5 sm:mx-2">//</span>
+          <span className="text-foreground whitespace-nowrap">SHADOW PLAYER</span>
         </h1>
       </div>
 

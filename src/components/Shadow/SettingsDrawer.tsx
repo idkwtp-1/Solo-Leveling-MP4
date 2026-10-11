@@ -22,6 +22,7 @@ type Props = {
   setNormalizationEnabled: (enabled: boolean) => void;
   mobileAudioMode?: boolean;
   setMobileAudioMode?: (enabled: boolean) => void;
+  isMobile?: boolean;
 };
 
 const CURSOR_OPTIONS = [
@@ -85,6 +86,7 @@ export function SettingsDrawer({
   setNormalizationEnabled,
   mobileAudioMode = false,
   setMobileAudioMode,
+  isMobile = false,
 }: Props) {
   return (
     <AnimatePresence>
@@ -128,42 +130,44 @@ export function SettingsDrawer({
             </div>
 
             <div className="flex-1 space-y-8 pr-1">
-              {/* Section 1: Cursors */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 font-display text-[11px] text-primary tracking-[0.2em] border-b border-border/10 pb-1.5">
-                  <MousePointer className="h-3 w-3" />
-                  CURSOR SYSTEM
-                </div>
-                <div className="grid grid-cols-1 gap-2">
-                  {CURSOR_OPTIONS.map((c) => {
-                    const active = cursorMode === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => setCursorMode(c.id)}
-                        className={`tap-press w-full text-left p-2.5 border transition-all duration-200 flex flex-col relative overflow-hidden group cursor-pointer ${
-                          active
-                            ? "bg-primary/5 border-primary"
-                            : "bg-background/25 border-border/30 hover:border-primary/50"
-                        }`}
-                      >
-                        {/* active diagonal corner glow */}
-                        {active && (
-                          <div className="absolute top-0 right-0 w-6 h-6 bg-primary opacity-20 rotate-45 translate-x-3 -translate-y-3" />
-                        )}
-                        <span
-                          className={`text-[11px] font-bold ${active ? "text-primary" : "text-foreground"}`}
+              {/* Section 1: Cursors (Desktop only) */}
+              {!isMobile && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 font-display text-[11px] text-primary tracking-[0.2em] border-b border-border/10 pb-1.5">
+                    <MousePointer className="h-3 w-3" />
+                    CURSOR SYSTEM
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {CURSOR_OPTIONS.map((c) => {
+                      const active = cursorMode === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setCursorMode(c.id)}
+                          className={`tap-press w-full text-left p-2.5 border transition-all duration-200 flex flex-col relative overflow-hidden group cursor-pointer ${
+                            active
+                              ? "bg-primary/5 border-primary"
+                              : "bg-background/25 border-border/30 hover:border-primary/50"
+                          }`}
                         >
-                          {c.name}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground mt-0.5 group-hover:text-foreground/80 transition-colors">
-                          {c.desc}
-                        </span>
-                      </button>
-                    );
-                  })}
+                          {/* active diagonal corner glow */}
+                          {active && (
+                            <div className="absolute top-0 right-0 w-6 h-6 bg-primary opacity-20 rotate-45 translate-x-3 -translate-y-3" />
+                          )}
+                          <span
+                            className={`text-[11px] font-bold ${active ? "text-primary" : "text-foreground"}`}
+                          >
+                            {c.name}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground mt-0.5 group-hover:text-foreground/80 transition-colors">
+                            {c.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Section 2: Animated Background */}
               <div className="space-y-3">
@@ -197,8 +201,8 @@ export function SettingsDrawer({
 
               {/* Section 3: Audio DSP & Playback Engine */}
               <div className="space-y-4">
-                {/* Mobile / Direct Background Audio Toggle */}
-                {setMobileAudioMode && (
+                {/* Mobile / Direct Background Audio Toggle (Mobile only) */}
+                {isMobile && setMobileAudioMode && (
                   <div className="p-2.5 rounded bg-surface/30 border border-border/40 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 font-display text-[11px] text-foreground tracking-wider">

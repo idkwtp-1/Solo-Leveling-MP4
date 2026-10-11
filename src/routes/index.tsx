@@ -163,6 +163,7 @@ function ShadowPlayerPage() {
 
 
   useEffect(() => {
+    if (typeof window === "undefined" || !(window as any).pywebview) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setShowExitDialog((prev) => {
@@ -1040,7 +1041,7 @@ function ShadowPlayerPage() {
 
   // Render to hidden canvas for PiP Mini-Player
   useEffect(() => {
-    if (!pipActive) return;
+    if (!pipActive || isMobile) return;
 
     let rafId: number;
     const canvas = pipCanvasRef.current;
@@ -1585,8 +1586,9 @@ function ShadowPlayerPage() {
     }
   }, [playing, activeTrack, mobileAudioMode]);
 
-  // Keyboard shortcuts (Space/ESC)
+  // Keyboard shortcuts (Space/ESC) - desktop only
   useEffect(() => {
+    if (isMobile) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && activeTrack) handleClose();
       if (e.code === "Space" && activeTrack) {
@@ -1605,7 +1607,7 @@ function ShadowPlayerPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeTrack]);
+  }, [activeTrack, isMobile]);
 
   // Keep a reference to latest control handlers to avoid stale closures in MediaSession events
   const handlersRef = useRef({
@@ -2109,6 +2111,7 @@ function ShadowPlayerPage() {
             setNormalizationEnabled={setNormalizationEnabled}
             mobileAudioMode={mobileAudioMode}
             setMobileAudioMode={handleSetMobileAudioMode}
+            isMobile={isMobile}
           />
 
           <YouTubeSearchDrawer
@@ -2123,31 +2126,37 @@ function ShadowPlayerPage() {
       )}
 
       {/* Hidden Canvas & Video for Picture-in-Picture Mini-Player */}
-      <canvas
-        ref={pipCanvasRef}
-        width="320"
-        height="180"
-        className="hidden"
-        style={{ display: "none" }}
-      />
-      <video
-        ref={pipVideoRef}
-        autoPlay
-        muted
-        playsInline
-        className="pointer-events-none fixed opacity-0 z-[-100]"
-        style={{
-          width: "320px",
-          height: "180px",
-          top: "-9999px",
-          left: "-9999px",
-        }}
-      />
+      {!isMobile && (
+        <>
+          <canvas
+            ref={pipCanvasRef}
+            width="320"
+            height="180"
+            className="hidden"
+            style={{ display: "none" }}
+          />
+          <video
+            ref={pipVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="pointer-events-none fixed opacity-0 z-[-100]"
+            style={{
+              width: "320px",
+              height: "180px",
+              top: "-9999px",
+              left: "-9999px",
+            }}
+          />
+        </>
+      )}
 
-      <ExitConfirmDialog
-        open={showExitDialog}
-        onOpenChange={setShowExitDialog}
-      />
+      {typeof window !== "undefined" && Boolean((window as any).pywebview) && (
+        <ExitConfirmDialog
+          open={showExitDialog}
+          onOpenChange={setShowExitDialog}
+        />
+      )}
 
       <CreateGateDialog
         open={isCreateGateOpen}

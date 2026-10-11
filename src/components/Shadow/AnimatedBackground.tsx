@@ -204,19 +204,26 @@ export function AnimatedBackground({
     resize();
     window.addEventListener("resize", resize);
 
-    // Particle pool settings based on intensity
-    let maxParticles = 60;
+    const isMobile =
+      typeof window !== "undefined" &&
+      (window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        ));
+
+    // Particle pool settings based on intensity (optimized for mobile battery)
+    let maxParticles = isMobile ? 25 : 60;
     let opacityMultiplier = 0.7;
     if (intensity === "subtle") {
-      maxParticles = 30;
+      maxParticles = isMobile ? 15 : 30;
       opacityMultiplier = 0.35;
     } else if (intensity === "intense") {
-      maxParticles = 120;
+      maxParticles = isMobile ? 35 : 120;
       opacityMultiplier = 1.0;
     }
 
     if (monarchMode) {
-      maxParticles = Math.floor(maxParticles * 1.5);
+      maxParticles = Math.floor(maxParticles * (isMobile ? 1.2 : 1.5));
       opacityMultiplier = Math.min(1.0, opacityMultiplier * 1.3);
     }
 
@@ -239,7 +246,7 @@ export function AnimatedBackground({
 
     const rainDrops: RainDrop[] = [];
     const screenDroplets: WaterDroplet[] = [];
-    if (intensity === "intense") {
+    if (!isMobile && intensity === "intense") {
       for (let i = 0; i < 60; i++) {
         rainDrops.push({
           x: Math.random() * window.innerWidth,

@@ -146,7 +146,7 @@ export function MonarchPlayer({
           {monarchMode ? "MONARCH OVERDRIVE // ACTIVE" : "SYSTEM ACTIVE // NOW PLAYING"}
         </span>
         <div className="flex items-center gap-3">
-          {onTogglePip && (
+          {!isMobile && onTogglePip && (
             <button
               onClick={onTogglePip}
               className={`tap-press transition-colors cursor-pointer ${
