@@ -34,6 +34,7 @@ import {
   GlobalOfflineProgress,
   type OfflineCacheProgress,
 } from "@/components/Shadow/GlobalOfflineProgress";
+import { GateSelectDropdown } from "@/components/Shadow/GateSelectDropdown";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -2211,13 +2212,15 @@ function UnassignedPanel({ tracks, gates, onAssign, onPlay, onDelete }: Unassign
             >
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <button
+                      type="button"
                       onClick={() => onPlay(track)}
-                      className="p-1 rounded-sm border border-primary/40 hover:border-primary hover:bg-primary/20 text-primary transition-all cursor-pointer shrink-0"
+                      className="p-2 min-w-[34px] min-h-[34px] flex items-center justify-center rounded-xs border border-primary/40 hover:border-primary hover:bg-primary/20 text-primary transition-all cursor-pointer shrink-0 tap-press"
                       title="Preview Track"
+                      aria-label={`Preview ${track.title}`}
                     >
-                      <Play className="w-3 h-3 fill-current" />
+                      <Play className="w-3.5 h-3.5 fill-current" />
                     </button>
                     <div className="font-display text-sm font-semibold text-foreground truncate">
                       {track.title}
@@ -2228,38 +2231,26 @@ function UnassignedPanel({ tracks, gates, onAssign, onPlay, onDelete }: Unassign
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-[9px] text-muted-foreground tracking-[0.1em] uppercase shrink-0">
-                    Select Gate:
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="font-mono text-[9px] text-muted-foreground tracking-[0.1em] uppercase shrink-0 hidden sm:inline">
+                    Destination:
                   </span>
-                  <select
-                    className="flex-1 bg-background/80 border border-border/70 rounded-sm text-xs font-mono text-primary px-2 py-1 outline-none cursor-pointer focus:border-primary/80 transition-colors"
-                    defaultValue=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        onAssign(track.id, e.target.value);
-                      }
-                    }}
-                  >
-                    <option value="" disabled>
-                      -- CHOOSE DESTINATION --
-                    </option>
-                    {gates.map((g) => (
-                      <option
-                        key={g.id}
-                        value={g.id}
-                        className="bg-background text-foreground text-xs"
-                      >
-                        [{g.rank}] {g.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex-1 min-w-0">
+                    <GateSelectDropdown
+                      gates={gates}
+                      onSelect={(gateId) => onAssign(track.id, gateId)}
+                      placeholder="-- CHOOSE DESTINATION --"
+                      ariaLabel={`Assign gate for ${track.title}`}
+                    />
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setTrackToDelete(track)}
                     title="Delete Track"
-                    className="p-1 rounded-sm border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 transition-all cursor-pointer shrink-0"
+                    aria-label={`Delete ${track.title}`}
+                    className="p-2 min-w-[34px] min-h-[34px] flex items-center justify-center rounded-xs border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 transition-all cursor-pointer shrink-0 tap-press"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

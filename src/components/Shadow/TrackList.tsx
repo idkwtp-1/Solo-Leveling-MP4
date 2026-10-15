@@ -3,6 +3,7 @@ import { ARTIST, type Gate, type Track } from "@/lib/shadow-data";
 import { cn } from "@/lib/utils";
 import { Play, Shuffle, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
+import { GateSelectDropdown } from "@/components/Shadow/GateSelectDropdown";
 
 type Props = {
   gate: Gate;
@@ -148,27 +149,17 @@ export function TrackList({
                   {onReassign && onUnassign && gates && (
                     <div className="flex items-center gap-2 shrink-0 relative z-20">
                       {/* Gate Transfer Dropdown */}
-                      <select
-                        aria-label="Transfer to gate"
-                        value={gate.id}
-                        onChange={(e) => {
-                          if (e.target.value && e.target.value !== gate.id) {
-                            onReassign(t.id, e.target.value);
+                      <GateSelectDropdown
+                        gates={gates}
+                        selectedGateId={gate.id}
+                        onSelect={(gateId) => {
+                          if (gateId !== gate.id) {
+                            onReassign(t.id, gateId);
                           }
                         }}
-                        className="bg-background/85 border border-border/40 hover:border-primary/50 rounded-sm text-[9px] font-mono text-primary px-1.5 py-0.5 outline-none cursor-pointer transition-colors max-w-[80px] sm:max-w-none"
-                      >
-                        {gates.map((g) => (
-                          <option
-                            key={g.id}
-                            value={g.id}
-                            className="bg-background text-foreground text-[10px]"
-                          >
-                            [{g.rank.replace("-RANK", "")}]{" "}
-                            {g.name.split(" ")[0]}
-                          </option>
-                        ))}
-                      </select>
+                        compact
+                        ariaLabel="Transfer to gate"
+                      />
 
                       {/* Unassign (Unbind) Button */}
                       <button

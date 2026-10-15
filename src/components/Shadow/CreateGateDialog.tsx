@@ -7,7 +7,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { getRankBadgeStyle } from "@/components/Shadow/GateSelectDropdown";
 
 interface CreateGateDialogProps {
   open: boolean;
@@ -73,17 +82,52 @@ export function CreateGateDialog({
             <label className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
               THREAT LEVEL (RANK)
             </label>
-            <select
-              value={gateRank}
-              onChange={(e) => setGateRank(e.target.value)}
-              className="w-full bg-surface border border-border/60 rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            >
-              {AVAILABLE_RANKS.map((r) => (
-                <option key={r} value={r} className="bg-background text-foreground">
-                  {r}
-                </option>
-              ))}
-            </select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full bg-surface/90 hover:bg-surface border border-border/60 hover:border-primary/60 rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary flex items-center justify-between cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-[8px] font-bold px-1.5 py-0.5 rounded-xs border", getRankBadgeStyle(gateRank))}>
+                      {gateRank}
+                    </span>
+                    <span className="font-display font-medium text-xs">
+                      {gateRank} DUNGEON
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-primary/60" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                sideOffset={4}
+                className="z-[110] w-[calc(100vw-3rem)] sm:w-[370px] bg-surface/95 backdrop-blur-xl border border-primary/40 shadow-2xl p-1.5 rounded-xs font-mono space-y-1"
+              >
+                <DropdownMenuLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground px-2 py-1 font-mono border-b border-border/40">
+                  SELECT THREAT LEVEL
+                </DropdownMenuLabel>
+                {AVAILABLE_RANKS.map((r) => (
+                  <DropdownMenuItem
+                    key={r}
+                    onClick={() => setGateRank(r)}
+                    className={cn(
+                      "flex items-center gap-2.5 px-2.5 py-2 rounded-xs cursor-pointer outline-none transition-all",
+                      gateRank === r
+                        ? "bg-primary/20 text-primary border border-primary/50"
+                        : "text-foreground hover:bg-primary/10 hover:text-primary border border-transparent",
+                    )}
+                  >
+                    <span className={cn("text-[8px] font-bold px-1.5 py-0.5 rounded-xs border", getRankBadgeStyle(r))}>
+                      {r}
+                    </span>
+                    <span className="font-display text-xs font-medium tracking-wide">
+                      {r} GATE
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <DialogFooter className="mt-6 flex sm:justify-center gap-3">
