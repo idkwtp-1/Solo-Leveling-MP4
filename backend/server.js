@@ -387,7 +387,7 @@ app.post("/api/youtube/download", express.json(), (req, res) => {
     return res.status(400).json({ error: "Missing videoId" });
   }
 
-  if (activeDownloads[videoId]) {
+  if (activeDownloads[videoId] && activeDownloads[videoId].status !== "failed") {
     return res.json({ message: "Download already in progress or completed", status: activeDownloads[videoId] });
   }
 
@@ -405,7 +405,16 @@ app.post("/api/youtube/download", express.json(), (req, res) => {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   const args = [
     "-f",
-    "ba[ext=m4a]/ba",
+    "ba[ext=m4a]/ba/b",
+    "-x",
+    "--audio-format",
+    "m4a",
+    "--js-runtimes",
+    "node",
+    "--remote-components",
+    "ejs:npm",
+    "--extractor-args",
+    "youtube:player_client=web_embedded,android",
     "--restrict-filenames",
     "--no-simulate",
     "--no-post-overwrites",
@@ -416,7 +425,7 @@ app.post("/api/youtube/download", express.json(), (req, res) => {
     "--print",
     "METADATA_DURATION:%(duration)s",
     "--print",
-    "METADATA_FILENAME:%(filename)s",
+    "after_move:METADATA_FILENAME:%(filepath)s",
     url,
   ];
 
