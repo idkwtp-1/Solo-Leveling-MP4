@@ -363,21 +363,41 @@ function runGitSync(title) {
   console.log(`[SLPlayer Backend] Starting Git Sync for track: ${title}`);
   const gitDir = path.join(__dirname, "..");
   const commitMsg = `feat: add track ${title}`;
-  runGitCommands(
-    [
-      ["git", ["add", "-A"]],
-      ["git", ["commit", "-m", commitMsg]],
-      ["git", ["push"]],
-    ],
-    gitDir,
-    (error) => {
-      if (error) {
-        console.error("[SLPlayer Backend] Git Sync failed:", error.message || error);
+
+  execFile("git", ["add", "-A"], { cwd: gitDir }, (addErr) => {
+    if (addErr) {
+      console.error("[SLPlayer Backend] Git add failed:", addErr.message || addErr);
+      return;
+    }
+    // Check if there are changes staged to commit
+    execFile("git", ["diff", "--cached", "--quiet"], { cwd: gitDir }, (diffErr) => {
+      // diffErr with code 1 means changes exist
+      if (diffErr && diffErr.code === 1) {
+        execFile("git", ["commit", "-m", commitMsg], { cwd: gitDir }, (commitErr) => {
+          if (commitErr) {
+            console.error("[SLPlayer Backend] Git commit failed:", commitErr.message || commitErr);
+            return;
+          }
+          execFile("git", ["push"], { cwd: gitDir }, (pushErr) => {
+            if (pushErr) {
+              console.error("[SLPlayer Backend] Git push failed:", pushErr.message || pushErr);
+            } else {
+              console.log("[SLPlayer Backend] Git Sync completed successfully!");
+            }
+          });
+        });
       } else {
-        console.log("[SLPlayer Backend] Git Sync completed successfully!");
+        // No new changes to commit, but ensure any unpushed commits are pushed
+        execFile("git", ["push"], { cwd: gitDir }, (pushErr) => {
+          if (pushErr) {
+            console.error("[SLPlayer Backend] Git push failed:", pushErr.message || pushErr);
+          } else {
+            console.log("[SLPlayer Backend] Git Sync up-to-date and pushed!");
+          }
+        });
       }
-    },
-  );
+    });
+  });
 }
 
 // 3. YouTube Download
