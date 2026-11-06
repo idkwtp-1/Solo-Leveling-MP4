@@ -41,7 +41,7 @@ export function GateSelectDropdown({
   gates,
   selectedGateId,
   onSelect,
-  placeholder = "-- CHOOSE DESTINATION --",
+  placeholder = "CHOOSE GATE",
   compact = false,
   className,
   ariaLabel = "Select gate destination",
@@ -55,10 +55,10 @@ export function GateSelectDropdown({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "group flex items-center justify-between gap-2 bg-surface/90 hover:bg-surface border border-primary/40 hover:border-primary/80 focus-visible:ring-1 focus-visible:ring-primary rounded-xs font-mono transition-all cursor-pointer text-left select-none tap-press",
+            "group flex items-center justify-between border border-primary/40 hover:border-primary/80 focus-visible:ring-1 focus-visible:ring-primary rounded-xs font-mono transition-all cursor-pointer text-left select-none tap-press",
             compact
-              ? "text-[10px] px-2 py-1 h-7 max-w-[120px] sm:max-w-none"
-              : "text-xs px-3 py-2 min-h-[38px] w-full",
+              ? "px-1.5 py-0.5 h-6 min-h-[24px] shrink-0 gap-1 bg-surface/90 hover:bg-surface text-[9px]"
+              : "text-[11px] px-2 py-1 min-h-[30px] h-8 w-full bg-surface/90 hover:bg-surface gap-1.5",
             className,
           )}
         >
@@ -67,68 +67,76 @@ export function GateSelectDropdown({
               <>
                 <span
                   className={cn(
-                    "text-[8px] font-bold px-1 py-0.5 rounded-xs border shrink-0",
+                    "text-[8px] font-bold px-1 py-0.5 rounded-xs border shrink-0 leading-none",
                     getRankBadgeStyle(selectedGate.rank),
                   )}
                 >
                   {selectedGate.rank.replace("-RANK", "")}
                 </span>
-                <span className="truncate text-foreground font-display font-medium text-xs">
-                  {selectedGate.name}
-                </span>
+                {!compact && (
+                  <span className="truncate text-foreground font-display font-medium text-[11px]">
+                    {selectedGate.name}
+                  </span>
+                )}
               </>
             ) : (
-              <span className="text-primary/70 tracking-wider truncate text-[11px] font-medium">
+              <span className="text-primary/70 tracking-wider truncate text-[10px] font-medium">
                 {placeholder}
               </span>
             )}
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-primary/60 group-hover:text-primary transition-transform group-data-[state=open]:rotate-180 shrink-0" />
+          <ChevronDown
+            className={cn(
+              "text-primary/60 group-hover:text-primary transition-transform group-data-[state=open]:rotate-180 shrink-0",
+              compact ? "w-2.5 h-2.5" : "w-3 h-3",
+            )}
+          />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="start"
         sideOffset={6}
-        className="z-50 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[260px] max-w-[92vw] bg-surface/95 backdrop-blur-xl border border-primary/40 shadow-2xl p-1.5 rounded-xs font-mono space-y-1"
+        className="z-50 min-w-[220px] max-w-[90vw] bg-surface/95 backdrop-blur-xl border border-primary/40 shadow-2xl p-1 rounded-xs font-mono space-y-0.5"
         style={{
           boxShadow:
             "0 8px 32px rgba(0, 0, 0, 0.7), 0 0 16px oklch(0.82 0.16 220 / 0.2)",
         }}
       >
-        <DropdownMenuLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground px-2 py-1 font-mono border-b border-border/40 flex items-center justify-between">
-          <span>SYSTEM DESTINATIONS</span>
+        <DropdownMenuLabel className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground px-2 py-1 font-mono border-b border-border/40 flex items-center justify-between">
+          <span>DESTINATIONS</span>
           <span className="text-[8px] text-primary/70">{gates.length} ACTIVE</span>
         </DropdownMenuLabel>
-        <div className="max-h-[280px] overflow-y-auto space-y-1 py-1">
+        <div className="max-h-[260px] overflow-y-auto space-y-0.5 py-0.5">
           {gates.map((g) => {
             const isSelected = g.id === selectedGateId;
+            const rankLabel = g.rank.replace("-RANK", "");
             return (
               <DropdownMenuItem
                 key={g.id}
                 onClick={() => onSelect(g.id)}
                 className={cn(
-                  "flex items-center justify-between gap-3 px-2.5 py-2 rounded-xs cursor-pointer outline-none transition-all",
+                  "flex items-center justify-between gap-2 px-2 py-1.5 rounded-xs cursor-pointer outline-none transition-all",
                   isSelected
                     ? "bg-primary/20 text-primary border border-primary/50"
                     : "text-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-transparent",
                 )}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span
                     className={cn(
-                      "text-[8px] font-bold px-1.5 py-0.5 rounded-xs border shrink-0",
+                      "text-[8px] font-bold px-1.5 py-0.5 rounded-xs border shrink-0 leading-none",
                       getRankBadgeStyle(g.rank),
                     )}
                   >
-                    {g.rank}
+                    {rankLabel}
                   </span>
-                  <span className="font-display text-xs font-medium tracking-wide truncate">
+                  <span className="font-display text-[11px] font-medium tracking-wide truncate">
                     {g.name}
                   </span>
                 </div>
-                <span className="font-mono text-[9px] text-muted-foreground shrink-0">
-                  {g.code || (g.trackIds ? `${g.trackIds.length} TRK` : "")}
+                <span className="font-mono text-[8px] text-muted-foreground shrink-0">
+                  {g.code || ""}
                 </span>
               </DropdownMenuItem>
             );

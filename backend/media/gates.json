@@ -1,0 +1,44 @@
+[
+  {
+    "id": "boss",
+    "name": "BOSS THEMES",
+    "rank": "S-RANK",
+    "code": "GT-001",
+    "tracks": []
+  },
+  {
+    "id": "hype",
+    "name": "SHADOW HYPE",
+    "rank": "A-RANK",
+    "code": "GT-002",
+    "tracks": []
+  },
+  {
+    "id": "chill",
+    "name": "CHILL VOID",
+    "rank": "B-RANK",
+    "code": "GT-003",
+    "tracks": []
+  },
+  {
+    "id": "monarch",
+    "name": "MONARCH'S DOMAIN",
+    "rank": "S-RANK",
+    "code": "GT-004",
+    "tracks": []
+  },
+  {
+    "id": "dungeon",
+    "name": "DUNGEON RUN",
+    "rank": "C-RANK",
+    "code": "GT-005",
+    "tracks": []
+  },
+  {
+    "id": "awaken",
+    "name": "AWAKENING",
+    "rank": "??",
+    "code": "GT-006",
+    "tracks": []
+  }
+]

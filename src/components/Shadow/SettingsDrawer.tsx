@@ -107,7 +107,7 @@ export function SettingsDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="fixed top-0 right-0 bottom-0 w-full sm:w-[400px] z-[55] bg-surface/95 border-l border-primary/25 backdrop-blur-xl p-6 overflow-y-auto flex flex-col font-mono"
+            className="fixed top-0 right-0 bottom-0 w-full sm:w-[400px] z-[55] bg-surface/95 border-l border-primary/25 backdrop-blur-xl px-6 pb-6 pt-[max(env(safe-area-inset-top,32px),32px)] overflow-y-auto flex flex-col font-mono"
             style={{
               boxShadow:
                 "-8px 0 32px rgba(0, 0, 0, 0.5), -2px 0 10px oklch(0.82 0.16 220 / 0.15)",

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Shadow Player</string>
+    <string name="title_activity_main">Shadow Player</string>
+    <string name="package_name">com.shadowplayer.app</string>
+    <string name="custom_url_scheme">com.shadowplayer.app</string>
+</resources>

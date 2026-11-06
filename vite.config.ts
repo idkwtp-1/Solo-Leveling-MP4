@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 
 export default defineConfig({
-  base: process.env.NODE_ENV === "production" ? "/Solo-Leveling-MP4/" : "/",
+  base: "./",
   server: {
     port: 8081,
     strictPort: true,

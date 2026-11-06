@@ -1,60 +1,58 @@
 import { useState } from "react";
-import { ARTIST, type Gate, type Track } from "@/lib/shadow-data";
+import type { Gate, Track } from "@/lib/shadow-data";
+import { ARTIST } from "@/lib/shadow-data";
+import { Play, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Play, Shuffle, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 import { GateSelectDropdown } from "@/components/Shadow/GateSelectDropdown";
 
 type Props = {
   gate: Gate;
   activeId: string | null;
-  onPlay: (t: Track) => void;
+  onPlay: (track: Track) => void;
+  onClose?: () => void;
   compact?: boolean;
+  onReassign?: (trackId: string, newGateId: string) => void;
+  onUnassign?: (trackId: string) => void;
+  onDelete?: (track: Track) => void;
+  gates?: Gate[];
   isOffline?: boolean;
   cachedTrackIds?: Set<string>;
-  onReassign?: (trackId: string, gateId: string) => void;
-  onUnassign?: (trackId: string) => void;
-  onDelete?: (trackId: string) => void;
-  gates?: Gate[];
-  onClose?: () => void;
-  onGateShuffle?: () => void;
 };
 
 export function TrackList({
   gate,
   activeId,
   onPlay,
+  onClose,
   compact = false,
-  isOffline = false,
-  cachedTrackIds = new Set(),
   onReassign,
   onUnassign,
   onDelete,
   gates,
-  onClose,
-  onGateShuffle,
+  isOffline = false,
+  cachedTrackIds = new Set(),
 }: Props) {
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-xs sm:text-sm tracking-[0.3em] text-primary text-glow-blue">
-          GATE OPEN: <span className="text-foreground">{gate.name}</span>
-        </h2>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between border-b border-border/40 pb-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-display text-sm tracking-wider font-semibold text-foreground">
+            {gate.name}
+          </span>
+          <span className="font-mono text-[10px] text-primary/70 border border-primary/30 px-1.5 py-0.2 rounded-xs">
             {gate.code}
           </span>
-          {onGateShuffle && (
-            <button
-              onClick={onGateShuffle}
-              title="Shuffle this gate's playlist"
-              className="flex items-center gap-1 font-mono text-[9px] border border-border/40 hover:border-primary/50 text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer tap-press"
-            >
-              <Shuffle className="h-2.5 w-2.5" />
-            </button>
-          )}
+          <span className="font-mono text-[10px] text-muted-foreground">
+            // {gate.tracks.length} TRACKS
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[9px] text-border tracking-[0.2em]">
+            SYSTEM PLAYLIST
+          </span>
           {onClose && (
             <button
               onClick={onClose}
@@ -89,7 +87,7 @@ export function TrackList({
               <li key={t.id}>
                 <div
                   className={cn(
-                    "group w-full flex items-center gap-3 sm:gap-4 px-2 sm:px-3 py-2.5 text-left transition-colors",
+                    "group w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 text-left transition-colors",
                     active ? "bg-shadow/15" : "hover:bg-primary/5",
                     isTrackDisabled && "opacity-25",
                   )}
@@ -99,12 +97,12 @@ export function TrackList({
                     onClick={() => !isTrackDisabled && onPlay(t)}
                     disabled={isTrackDisabled}
                     className={cn(
-                      "flex-1 flex items-center gap-3 sm:gap-4 text-left min-w-0 tap-press disabled:cursor-not-allowed disabled:pointer-events-none",
+                      "flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0 tap-press disabled:cursor-not-allowed disabled:pointer-events-none",
                     )}
                   >
                     <span
                       className={cn(
-                        "font-mono text-xs w-8 shrink-0",
+                        "font-mono text-[11px] w-5 shrink-0",
                         active
                           ? "text-primary text-glow-blue"
                           : "text-muted-foreground",
@@ -112,7 +110,7 @@ export function TrackList({
                     >
                       {t.index}
                     </span>
-                    <span className="relative w-5 h-5 grid place-items-center shrink-0">
+                    <span className="relative w-4 h-4 grid place-items-center shrink-0">
                       <Play
                         className={cn(
                           "h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -121,23 +119,22 @@ export function TrackList({
                         fill="currentColor"
                       />
                     </span>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 pr-1">
                       <div
                         className={cn(
-                          "font-display font-semibold truncate",
-                          compact ? "text-xs" : "text-sm sm:text-base",
+                          "font-display font-semibold truncate text-xs sm:text-sm",
                           active && "text-glow-purple text-foreground",
                         )}
                       >
                         {t.title}
                       </div>
-                      <div className="font-mono text-[10px] text-muted-foreground truncate">
+                      <div className="font-mono text-[9px] text-muted-foreground truncate">
                         {ARTIST}
                       </div>
                     </div>
                     <span
                       className={cn(
-                        "font-mono text-xs shrink-0 mr-2",
+                        "font-mono text-[10px] shrink-0 mr-1",
                         active ? "text-primary" : "text-muted-foreground",
                       )}
                     >
@@ -147,8 +144,8 @@ export function TrackList({
 
                   {/* Assignment / Unassignment Controls */}
                   {onReassign && onUnassign && gates && (
-                    <div className="flex items-center gap-2 shrink-0 relative z-20">
-                      {/* Gate Transfer Dropdown */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 relative z-20">
+                      {/* Gate Transfer Dropdown (Compact rank badge only: S, A, B, etc.) */}
                       <GateSelectDropdown
                         gates={gates}
                         selectedGateId={gate.id}
@@ -165,7 +162,7 @@ export function TrackList({
                       <button
                         onClick={() => onUnassign(t.id)}
                         title="Unassign track"
-                        className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/30 text-red-400 font-mono text-[9px] px-1.5 py-0.5 rounded-sm transition-all"
+                        className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/30 text-red-400 font-mono text-[8px] px-1 py-0.5 h-6 rounded-xs transition-all tracking-wider"
                       >
                         UNBIND
                       </button>
@@ -178,7 +175,7 @@ export function TrackList({
                             setTrackToDelete(t);
                           }}
                           title="Delete track permanently"
-                          className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 p-1 rounded-sm transition-all cursor-pointer"
+                          className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 p-1 h-6 w-6 flex items-center justify-center rounded-xs transition-all cursor-pointer"
                         >
                           <Trash2 className="w-2.5 h-2.5" />
                         </button>
@@ -201,14 +198,15 @@ export function TrackList({
             ? `WARNING: Deleting "${trackToDelete.title}" will permanently remove its audio file and system bindings. Proceed?`
             : ""
         }
-        confirmText="PURGE TRACK"
-        cancelText="ABORT"
+        confirmText="DELETE TRACK"
+        destructive
         onConfirm={() => {
           if (trackToDelete && onDelete) {
-            onDelete(trackToDelete.id);
+            onDelete(trackToDelete);
+            setTrackToDelete(null);
           }
         }}
       />
-    </section>
+    </div>
   );
 }

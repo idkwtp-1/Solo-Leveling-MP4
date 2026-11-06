@@ -1,0 +1,114 @@
+# Changelog: Shadow Player (Solo Leveling MP4)
+
+All notable changes, architectural evolutions, bug fixes, and feature releases for the Shadow Player project are documented in this file.
+
+---
+
+## [2.0.0] - 2026-11-05 — PWA to Full Native Android Application
+*Major Milestone: Complete migration from Mobile PWA to standalone native Android application (`com.shadowplayer.app`).*
+
+### Completed
+- **Full Android Native App (Capacitor & Gradle)**:
+  - Packaged React/Vite frontend into a native Android APK (`app-debug.apk`, 181.38 MB).
+  - Configured `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`, `@capacitor/filesystem`, and `@capacitor/preferences`.
+  - Android Manifest configured with `usesCleartextTraffic="true"` and network access for local Wi-Fi sync.
+  - Native Android status bar & navigation bar theming (`#0b0e14` obsidian black).
+- **APK Media Bundling (100% Offline Out-of-the-Box)**:
+  - All 96 existing tracks (~176 MB), `tracks_inventory.json`, `gates.json`, `assignments.json`, and `beat_drops.json` packaged directly into `android/app/src/main/assets/public/media/`.
+  - Zero initial setup or Wi-Fi download needed after installing the APK.
+- **Native Android Foreground Audio Service & Lock Screen Controls**:
+  - Implemented `ShadowAudioService.java` with `FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK` and `PARTIAL_WAKE_LOCK`.
+  - Implemented `MediaSessionCompat` and `NotificationCompat.Builder` (MediaStyle) notification.
+  - Active lock-screen playback controls: Play/Pause, Next Track, Previous Track, and direct notification click to restore app.
+  - Implemented `ShadowAudioPlugin.java` bridge in `MainActivity.java` connecting native media buttons directly to React player handlers.
+- **Unified Audio & Storage Resolver**:
+  - Created `src/lib/storage/nativeLibrary.ts` with `getAudioUrl`, `loadNativeAssignments`, `saveNativeAssignments`, and `ShadowAudio`.
+  - Native assignment persistence backed by Android `SharedPreferences` via `@capacitor/preferences` to eliminate browser cache evictions.
+- **Mobile YouTube Search & Download Pipeline Integration**:
+  - Configured `getApiBase()` to automatically resolve local PC host IP (`10.87.168.83:3001`) with configurable `slplayer-pc-host` override.
+  - Updated `YouTubeSearchDrawer.tsx` error reporting with clear diagnostic feedback for Wi-Fi LAN link.
+- **PWA Decommissioning**:
+  - Completely deleted legacy Service Worker (`public/sw.js`) and web manifest (`public/manifest.json`).
+  - Added legacy SW unregistration logic on boot to clean up obsolete browser cache workers.
+  - Switched Vite build output base to `./` relative asset loading for direct WebView execution.
+- **Custom Launcher Icon & Visual Branding**:
+  - Generated high-resolution Android launcher icons across all screen densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) from the canonical `public/icon-512.png` Solo Leveling crest.
+  - Configured dark obsidian launcher background (`#08090B`) matching the app theme.
+- **Compact Gate Destination Selector & Clean Typography**:
+  - Re-engineered `GateSelectDropdown.tsx` in compact track-list mode to render only the rank badge (`[ S ]`, `[ A ]`, `[ B ]`, `[ C ]`, `[ ?? ]`) and minimal chevron (~32px width) instead of the full gate text.
+  - Restored over 200px of horizontal room for track names in `TrackList.tsx`, eliminating truncation on narrow smartphone screens.
+- **Camera Cutout & Safe Area Insets**:
+  - Added hardware safe-area top padding (`pt-[max(env(safe-area-inset-top,32px),32px)]`) across main HUD, `YouTubeSearchDrawer.tsx`, and `SettingsDrawer.tsx` to prevent collision with punch-hole cameras, clocks, and status bar icons.
+  - Locked activity to portrait mode in `AndroidManifest.xml` for consistent mobile ergonomics.
+
+---
+
+## [1.5.0] - 2026-10-15 — Mobile PWA Polish & UI Overhaul
+- **Custom Holographic Gate Dropdown**:
+  - Replaced native Android OS `<select>` sheet modals with custom `@radix-ui/react-dropdown-menu` (`GateSelectDropdown.tsx`).
+  - Added glowing Solo Leveling rank badges (`S-RANK`, `A-RANK`, `B-RANK`, `C-RANK`, `??`) and gate codes (`GT-001` through `GT-006`).
+- **Android Status Bar & Safe Area Theming**:
+  - Changed manifest `theme_color` to `#0b0e14` and added `viewport-fit=cover` in `__root.tsx` to match obsidian theme.
+- **Unicode & Diacritics Normalization**:
+  - Fixed corrupted diacritics in `tracks_inventory.json` (`São Paulo`, `Áurea cósmica`, `NO BATIDÃO`, `TE CONOCÍ`, `riserayss • LONOWN — jessie`).
+- **Touch Ergonomics**:
+  - Expanded touch targets to $\ge 34\text{px}$ with accessible padding and explicit ARIA labels.
+- **New Tracks Added**:
+  - Added `WE ON GO II`, `Push The Feeling On (Slowed+Reverb)`, `Conflate`, and `São Paulo`.
+
+---
+
+## [1.4.0] - 2026-10-11 — Mobile PWA vs Desktop Separation
+- **Mobile Cursor Optimization**:
+  - Completely hid the 6-option `CURSOR SYSTEM` selector on mobile devices (`isMobile`) while keeping it interactive on desktop.
+- **Battery & Performance Clamping**:
+  - Clamped particle counts in `AnimatedBackground.tsx` to 25 on mobile and bypassed CPU-heavy rain/droplet simulations.
+  - Bypassed hidden 60fps `<canvas>` / `<video>` PiP render loop on mobile to prevent phone thermal throttling.
+- **Header Typography**:
+  - Balanced `SystemHeader.tsx` font scaling (`text-sm sm:text-lg lg:text-2xl`) so title cleanly spans 2 lines on smartphone displays.
+
+---
+
+## [1.3.0] - 2026-10-05 — Parallel Offline Caching & Sync HUD
+- **Parallel Service Worker Caching**:
+  - Rebuilt offline pre-caching with multi-worker concurrent download pools.
+- **Offline HUD & Sync Progress**:
+  - Created `GlobalOfflineProgress.tsx` to display real-time caching status, percentage, and track counts.
+- **Track Duration & Loop Fixes**:
+  - Resolved audio loop bugs past `endTime` and fixed offline queue reshuffle logic.
+
+---
+
+## [1.2.0] - 2026-08-05 — Smart Assignment Persistence & Desktop Integration
+- **Gate Assignment Smart Merge**:
+  - Implemented client-side localStorage fallback merging with backend `assignments.json`.
+- **Auto Git Sync**:
+  - Backend automatically commits and pushes track downloads and assignment updates to Git repository.
+- **Mobile Background Audio**:
+  - Implemented MediaSession API metadata and audio session wake handling for basic mobile browser playback.
+
+---
+
+## [1.1.0] - 2026-06-04 — Desktop PyWebView & Window Controls
+- **PyWebView Desktop Wrapper**:
+  - Integrated `run_pywebview.py` for a frameless, native Windows desktop application.
+  - Added custom titlebar controls, minimize/maximize/close actions, and custom exit confirmation modal.
+  - Added `pywebview-drag-region` to prevent window dragging issues.
+- **Express Backend & Streaming**:
+  - Configured Express server (`backend/server.js`) with HTTP 206 Byte-Range partial content streaming for fast seeking.
+  - Integrated `yt-dlp.exe` with Node child process spawn for in-app YouTube search and downloads.
+  - Integrated `analyze_drops.py` using Python/librosa for automatic beat drop detection.
+
+---
+
+## [1.0.0] - 2026-05-19 — Core Player Architecture & Solo Leveling HUD
+- **Solo Leveling Cyberpunk Interface**:
+  - High-tech holographic Sci-Fi FUI design system (Orbitron, Rajdhani, Roboto Mono typography).
+  - Hexagonal action buttons (`HexButton.tsx`), glowing rank borders, and animated background particles.
+- **Monarch DSP Audio Engine**:
+  - Web Audio API pipeline with multi-band Equalizer (Sub, Bass, Mid, Presence, Air).
+  - Convolution and algorithmic Reverb effects, Bass Boost, and Atmospheric Abyss filtering.
+  - Interactive circular portal visualizer (`PortalVisualizer.tsx`) and real-time frequency analyzer.
+- **Gate-Based Playlist System**:
+  - Categorization of tracks into dungeons/gates: BOSS THEMES (S-Rank), SHADOW HYPE (A-Rank), CHILL VOID (B-Rank), MONARCH'S DOMAIN (S-Rank), DUNGEON RUN (C-Rank), AWAKENING (??).
+  - Unassigned tracks panel with quick assignment and drag/transfer capabilities.

@@ -35,6 +35,7 @@ import {
   type OfflineCacheProgress,
 } from "@/components/Shadow/GlobalOfflineProgress";
 import { GateSelectDropdown } from "@/components/Shadow/GateSelectDropdown";
+import { getAudioUrl, isNativeAndroid, loadNativeAssignments, saveNativeAssignments, ShadowAudio } from "@/lib/storage/nativeLibrary";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -57,7 +58,14 @@ export const Route = createFileRoute("/")({
 
 const getApiBase = () => {
   if (typeof window === "undefined") return "http://localhost:3001";
+  const storedHost = localStorage.getItem("slplayer-pc-host");
+  if (storedHost && storedHost.trim()) {
+    return `http://${storedHost.trim()}:3001`;
+  }
   const hostname = window.location.hostname;
+  if (isNativeAndroid()) {
+    return "http://10.87.168.83:3001";
+  }
   return `http://${hostname}:3001`;
 };
 
@@ -763,40 +771,16 @@ function ShadowPlayerPage() {
     [activeGateId, gates],
   );
 
-  // SW registration and connection listeners
+  // Native connection listeners & clean up legacy service workers
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handleSwMessage = (event: MessageEvent) => {
-      if (!event.data) return;
-      if (event.data.type === "PRECACHE_PROGRESS") {
-        setOfflineCacheProgress({
-          cached: event.data.cached ?? 0,
-          skipped: event.data.skipped ?? 0,
-          total: event.data.total ?? 0,
-        });
-      } else if (event.data.type === "PRECACHE_COMPLETE") {
-        setOfflineCacheProgress(null);
-        updateCachedTracks();
-        const cachedCount = event.data.cached ?? 0;
-        const skippedCount = event.data.skipped ?? 0;
-        if (cachedCount > 0) {
-          toast.success(
-            `SYSTEM: Offline cache synced (${cachedCount} new, ${skippedCount} cached)`,
-          );
-        } else {
-          toast.success(
-            `SYSTEM: Offline cache verified (${skippedCount} tracks ready)`,
-          );
-        }
-      }
-    };
-
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register(`${import.meta.env.BASE_URL}sw.js`)
-        .catch((err) => console.error("[SLPlayer] ServiceWorker failed:", err));
-      navigator.serviceWorker.addEventListener("message", handleSwMessage);
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.unregister().catch(() => {});
+        }
+      });
     }
 
     const handleOnline = () => setIsOffline(false);
@@ -809,33 +793,11 @@ function ShadowPlayerPage() {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.removeEventListener("message", handleSwMessage);
-      }
     };
   }, []);
 
   const handleSyncOfflineCache = async () => {
-    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
-      toast.error("SYSTEM ERROR: Service Worker not supported");
-      return;
-    }
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const target = navigator.serviceWorker.controller || reg.active;
-      if (target) {
-        setOfflineCacheProgress({
-          cached: 0,
-          skipped: 0,
-          total: trackInventory.length || 1,
-        });
-        target.postMessage({ type: "PRECACHE_MEDIA" });
-      } else {
-        toast.error("SYSTEM ERROR: Offline Service Worker not ready yet");
-      }
-    } catch (e) {
-      console.error("[SLPlayer] Failed to trigger offline cache sync:", e);
-    }
+    toast.success(`SYSTEM: All ${trackInventory.length} tracks are bundled natively for offline use.`);
   };
 
   // Update cached tracks list scanned from Service Worker
@@ -1238,9 +1200,7 @@ function ShadowPlayerPage() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const srcUrl = import.meta.env.PROD
-      ? `${import.meta.env.BASE_URL}media/${track.filename || `${track.id}.mp3`}`
-      : `${API_BASE}/api/stream/${encodeURIComponent(track.id)}`;
+    const srcUrl = getAudioUrl(track, API_BASE);
 
     // Resolve to absolute URL to avoid duplicate loads when comparing with audio.src
     const absoluteSrcUrl = new URL(srcUrl, window.location.href).href;
@@ -1647,12 +1607,26 @@ function ShadowPlayerPage() {
     }
   }, [activeTrack, gates, activeGate]);
 
-  // Media Session API - Sync playback state
+  // Media Session API - Sync playback state & Native Foreground Service
   useEffect(() => {
-    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    if (typeof window === "undefined") return;
 
-    navigator.mediaSession.playbackState = playing ? "playing" : "paused";
-  }, [playing]);
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+    }
+
+    if (isNativeAndroid()) {
+      if (activeTrack) {
+        ShadowAudio.updatePlayback({
+          title: activeTrack.title,
+          artist: "Solo Leveling // System Online",
+          isPlaying: playing,
+        }).catch(() => {});
+      } else {
+        ShadowAudio.stopPlayback().catch(() => {});
+      }
+    }
+  }, [playing, activeTrack]);
 
   // Media Session API - Sync position state (timers/scrub progress)
   useEffect(() => {
@@ -1681,6 +1655,19 @@ function ShadowPlayerPage() {
   // Media Session API - Register action handlers for background/OS controls
   useEffect(() => {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+
+    let nativeSub: any = null;
+    if (isNativeAndroid()) {
+      nativeSub = ShadowAudio.addListener("nativeMediaControl", ({ action }) => {
+        if (action === "toggle_play") {
+          setPlaying((prev) => !prev);
+        } else if (action === "next") {
+          handlersRef.current.handleNext();
+        } else if (action === "prev") {
+          handlersRef.current.handlePrev();
+        }
+      });
+    }
 
     try {
       navigator.mediaSession.setActionHandler("play", () => {
@@ -1748,13 +1735,7 @@ function ShadowPlayerPage() {
           playsInline
           preload="auto"
           crossOrigin="anonymous"
-          src={
-            activeTrack
-              ? import.meta.env.PROD
-                ? `${import.meta.env.BASE_URL}media/${activeTrack.filename || `${activeTrack.id}.mp3`}`
-                : `${API_BASE}/api/stream/${encodeURIComponent(activeTrack.id)}`
-              : undefined
-          }
+          src={activeTrack ? getAudioUrl(activeTrack, API_BASE) : undefined}
           onTimeUpdate={(e) => {
             const time = e.currentTarget.currentTime;
             setCurrentTime(time);
@@ -1912,7 +1893,7 @@ function ShadowPlayerPage() {
             </div>
           )}
 
-          <main className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10 py-6 sm:py-8 flex flex-col min-h-screen">
+          <main className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10 pt-[max(env(safe-area-inset-top,34px),34px)] pb-6 sm:py-8 flex flex-col min-h-screen">
             {!hasMounted ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] font-mono text-xs text-primary gap-4">
                 <span className="h-8 w-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -2239,7 +2220,7 @@ function UnassignedPanel({ tracks, gates, onAssign, onPlay, onDelete }: Unassign
                     <GateSelectDropdown
                       gates={gates}
                       onSelect={(gateId) => onAssign(track.id, gateId)}
-                      placeholder="-- CHOOSE DESTINATION --"
+                      placeholder="ASSIGN GATE"
                       ariaLabel={`Assign gate for ${track.title}`}
                     />
                   </div>
