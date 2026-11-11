@@ -12,6 +12,7 @@ import {
   Music2,
   WifiOff,
   Layers,
+  Sliders,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ type Props = {
   onToggleShuffle: () => void;
   repeatMode: "none" | "all" | "one";
   onToggleRepeat: () => void;
+  onOpenSettings?: () => void;
 };
 
 const isTrackCached = (track: Track, cachedSet?: Set<string>) => {
@@ -65,6 +67,7 @@ export function OfflinePlayer({
   onToggleShuffle,
   repeatMode,
   onToggleRepeat,
+  onOpenSettings,
 }: Props) {
   const [selectedGateId, setSelectedGateId] = useState<string | null>(activeGateId);
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,11 +189,22 @@ export function OfflinePlayer({
               Shadow Player
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-amber-400">
-            <WifiOff className="h-3 w-3" />
-            <span className="font-mono text-[9px] tracking-wider uppercase">
-              Offline
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <WifiOff className="h-3 w-3" />
+              <span className="font-mono text-[9px] tracking-wider uppercase">
+                Offline
+              </span>
+            </div>
+            {onOpenSettings && (
+              <button
+                onClick={onOpenSettings}
+                className="tap-press p-1.5 rounded border border-border/60 hover:border-primary text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                title="System Settings & DSP"
+              >
+                <Sliders className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </header>

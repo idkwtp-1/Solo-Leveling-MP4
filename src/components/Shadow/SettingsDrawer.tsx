@@ -18,6 +18,10 @@ type Props = {
   setTrebleGain: (gain: number) => void;
   reverbEnabled: boolean;
   setReverbEnabled: (enabled: boolean) => void;
+  reverbDepth?: number;
+  setReverbDepth?: (depth: number) => void;
+  overdriveGain?: number;
+  setOverdriveGain?: (gain: number) => void;
   normalizationEnabled: boolean;
   setNormalizationEnabled: (enabled: boolean) => void;
   mobileAudioMode?: boolean;
@@ -82,6 +86,10 @@ export function SettingsDrawer({
   setTrebleGain,
   reverbEnabled,
   setReverbEnabled,
+  reverbDepth = 35,
+  setReverbDepth,
+  overdriveGain = 0,
+  setOverdriveGain,
   normalizationEnabled,
   setNormalizationEnabled,
   mobileAudioMode = false,
@@ -206,10 +214,10 @@ export function SettingsDrawer({
                   <div className="p-2.5 rounded bg-surface/30 border border-border/40 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 font-display text-[11px] text-foreground tracking-wider">
-                        <span>📱 MOBILE BACKGROUND PLAY</span>
+                        <span>📱 DIRECT AUDIO BYPASS</span>
                         {mobileAudioMode && (
                           <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.2 rounded border border-primary/30 font-mono">
-                            ACTIVE
+                            BYPASSED
                           </span>
                         )}
                       </div>
@@ -224,7 +232,7 @@ export function SettingsDrawer({
                       </label>
                     </div>
                     <div className="text-[9px] text-muted-foreground leading-snug">
-                      Streams directly to OS audio subsystem. Keeps music playing when screen is locked or outside PWA.
+                      Bypasses Web Audio DSP processing for direct low-power battery-saver audio decoding. Keep OFF to enjoy full Monarch DSP effects.
                     </div>
                   </div>
                 )}
@@ -268,8 +276,9 @@ export function SettingsDrawer({
                       </div>
                       <input
                         type="range"
-                        min="-10"
+                        min="-15"
                         max="15"
+                        step="1"
                         value={bassGain}
                         onChange={(e) => setBassGain(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
@@ -294,8 +303,9 @@ export function SettingsDrawer({
                       </div>
                       <input
                         type="range"
-                        min="-10"
-                        max="10"
+                        min="-15"
+                        max="15"
+                        step="1"
                         value={midGain}
                         onChange={(e) => setMidGain(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
@@ -320,29 +330,106 @@ export function SettingsDrawer({
                       </div>
                       <input
                         type="range"
-                        min="-10"
-                        max="10"
+                        min="-15"
+                        max="15"
+                        step="1"
                         value={trebleGain}
                         onChange={(e) => setTrebleGain(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
                       />
                     </div>
+
+                    {/* Monarch Overdrive (WaveShaper Soft Saturation) */}
+                    <div className="space-y-1 pt-1 border-t border-border/10">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-foreground font-bold flex items-center gap-1.5">
+                          <span>⚔️ MONARCH OVERDRIVE</span>
+                          {overdriveGain > 0 && (
+                            <span className="text-[8px] bg-red-500/20 text-red-400 px-1 py-0.2 rounded border border-red-500/30">
+                              WARM SATURATION
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={
+                            overdriveGain > 0
+                              ? "text-red-400 font-bold"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {overdriveGain.toFixed(1)} / 10.0
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.1"
+                        value={overdriveGain}
+                        onChange={(e) => setOverdriveGain?.(Number(e.target.value))}
+                        className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-red-500 focus:outline-none"
+                      />
+                      <div className="flex justify-between text-[8px] text-muted-foreground">
+                        <span>CLEAN (0.0)</span>
+                        <span>TUBE WARMTH</span>
+                        <span>SHADOW DRIVE (10.0)</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Cinematic Reverb */}
-                  <div className="flex items-center justify-between border-t border-border/10 pt-3">
-                    <span className="text-[10px] text-foreground font-bold">
-                      DUNGEON REVERB
-                    </span>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                  {/* Dungeon Reverb */}
+                  <div className="space-y-2 border-t border-border/10 pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-foreground font-bold flex items-center gap-1.5">
+                        <span>🌀 DUNGEON REVERB</span>
+                        {reverbEnabled && (
+                          <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.2 rounded border border-primary/30">
+                            ACTIVE
+                          </span>
+                        )}
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={reverbEnabled}
+                          onChange={(e) => setReverbEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-7 h-4 bg-border/40 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary" />
+                      </label>
+                    </div>
+
+                    {/* Reverb Depth Slider */}
+                    <div
+                      className={`space-y-1 transition-opacity ${
+                        reverbEnabled ? "opacity-100" : "opacity-40"
+                      }`}
+                    >
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground text-[9px]">
+                          REVERB DEPTH (SPACE)
+                        </span>
+                        <span
+                          className={
+                            reverbEnabled && reverbDepth > 0
+                              ? "text-primary font-bold"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {reverbDepth}%
+                        </span>
+                      </div>
                       <input
-                        type="checkbox"
-                        checked={reverbEnabled}
-                        onChange={(e) => setReverbEnabled(e.target.checked)}
-                        className="sr-only peer"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        disabled={!reverbEnabled}
+                        value={reverbDepth}
+                        onChange={(e) => setReverbDepth?.(Number(e.target.value))}
+                        className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none disabled:cursor-not-allowed"
                       />
-                      <div className="w-7 h-4 bg-border/40 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary" />
-                    </label>
+                    </div>
                   </div>
 
                   {/* Loudness Leveling */}

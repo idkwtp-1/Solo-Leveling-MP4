@@ -195,7 +195,7 @@ function ShadowPlayerPage() {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("slplayer-mobile-audio-mode");
     if (stored !== null) return stored === "true";
-    return isMobileDevice();
+    return false;
   });
 
   const handleSetMobileAudioMode = (enabled: boolean) => {
@@ -456,6 +456,7 @@ function ShadowPlayerPage() {
   const bassFilterRef = useRef<BiquadFilterNode | null>(null);
   const midFilterRef = useRef<BiquadFilterNode | null>(null);
   const trebleFilterRef = useRef<BiquadFilterNode | null>(null);
+  const waveShaperRef = useRef<WaveShaperNode | null>(null);
   const compressorRef = useRef<DynamicsCompressorNode | null>(null);
   const reverbRef = useRef<GainNode | null>(null);
   const normalizationGainRef = useRef<GainNode | null>(null);
@@ -490,7 +491,9 @@ function ShadowPlayerPage() {
   const [bassGain, setBassGain] = useState(0);
   const [midGain, setMidGain] = useState(0);
   const [trebleGain, setTrebleGain] = useState(0);
+  const [overdriveGain, setOverdriveGain] = useState(0);
   const [reverbEnabled, setReverbEnabled] = useState(false);
+  const [reverbDepth, setReverbDepth] = useState(35);
 
   const [shuffle, setShuffle] = useState(false);
   const [globalShuffleActive, setGlobalShuffleActive] = useState(false);
@@ -540,8 +543,25 @@ function ShadowPlayerPage() {
     return () => clearInterval(interval);
   }, [isLocalApp, refetchTracks]);
 
+  const makeOverdriveCurve = (drive: number): Float32Array => {
+    const n_samples = 4096;
+    const curve = new Float32Array(n_samples);
+    if (drive <= 0) {
+      for (let i = 0; i < n_samples; i++) {
+        curve[i] = (i * 2) / n_samples - 1;
+      }
+      return curve;
+    }
+    const k = 1 + drive * 2.5;
+    const norm = Math.tanh(k);
+    for (let i = 0; i < n_samples; i++) {
+      const x = (i * 2) / n_samples - 1;
+      curve[i] = Math.tanh(k * x) / norm;
+    }
+    return curve;
+  };
+
   const initAudioContext = () => {
-    if (mobileAudioMode) return;
     if (audioContextRef.current) return;
     const audio = audioRef.current;
     if (!audio) return;
@@ -562,22 +582,40 @@ function ShadowPlayerPage() {
     bass.type = "peaking";
     bass.frequency.value = 100;
     bass.Q.value = 1.0;
-    bass.gain.value = dspEnabled ? bassGain : 0;
+    const effectiveBass = monarchMode
+      ? Math.max(15, dspEnabled && !mobileAudioMode ? bassGain + 8 : 15)
+      : (dspEnabled && !mobileAudioMode ? bassGain : 0);
+    bass.gain.value = effectiveBass;
     bassFilterRef.current = bass;
 
     const mid = ctx.createBiquadFilter();
     mid.type = "peaking";
     mid.frequency.value = 1000;
     mid.Q.value = 1.0;
-    mid.gain.value = dspEnabled ? midGain : 0;
+    const effectiveMid = monarchMode
+      ? Math.min(-2, dspEnabled && !mobileAudioMode ? midGain - 3 : -2)
+      : (dspEnabled && !mobileAudioMode ? midGain : 0);
+    mid.gain.value = effectiveMid;
     midFilterRef.current = mid;
 
     const treble = ctx.createBiquadFilter();
     treble.type = "peaking";
     treble.frequency.value = 5000;
     treble.Q.value = 1.0;
-    treble.gain.value = dspEnabled ? trebleGain : 0;
+    const effectiveTreble = monarchMode
+      ? Math.max(4, dspEnabled && !mobileAudioMode ? trebleGain + 2 : 4)
+      : (dspEnabled && !mobileAudioMode ? trebleGain : 0);
+    treble.gain.value = effectiveTreble;
     trebleFilterRef.current = treble;
+
+    // WaveShaper for Monarch Overdrive saturation
+    const waveShaper = ctx.createWaveShaper();
+    waveShaper.oversample = "2x";
+    const initialDrive = monarchMode
+      ? Math.max(overdriveGain, 5.0)
+      : (dspEnabled && !mobileAudioMode ? overdriveGain : 0);
+    waveShaper.curve = makeOverdriveCurve(initialDrive);
+    waveShaperRef.current = waveShaper;
 
     const compressor = ctx.createDynamicsCompressor();
     compressor.threshold.setValueAtTime(-24, ctx.currentTime);
@@ -604,16 +642,21 @@ function ShadowPlayerPage() {
       normGain.gain.value = 1.0;
       normalizationGainRef.current = normGain;
 
+      // Routing: source -> bass -> mid -> treble -> waveShaper -> compressor -> normGain -> analyser -> destination
       source.connect(bass);
       bass.connect(mid);
       mid.connect(treble);
-      treble.connect(compressor);
+      treble.connect(waveShaper);
+      waveShaper.connect(compressor);
       compressor.connect(normGain);
       normGain.connect(analyser);
 
       // Create Dry/Wet mix for reverb
       const wetGain = ctx.createGain();
-      wetGain.gain.value = dspEnabled && reverbEnabled ? 0.35 : 0.0;
+      const isReverbActive = reverbEnabled || (dspEnabled && reverbDepth > 0);
+      const targetDepth = isReverbActive ? reverbDepth / 100 : 0;
+      const initialWet = (dspEnabled || monarchMode) && !mobileAudioMode ? targetDepth : 0.0;
+      wetGain.gain.value = initialWet;
       reverbRef.current = wetGain;
 
       analyser.connect(ctx.destination);
@@ -629,8 +672,8 @@ function ShadowPlayerPage() {
   useEffect(() => {
     if (bassFilterRef.current) {
       const effectiveBass = monarchMode
-        ? Math.max(15, dspEnabled ? bassGain + 10 : 15)
-        : (dspEnabled ? bassGain : 0);
+        ? Math.max(15, dspEnabled && !mobileAudioMode ? bassGain + 8 : 15)
+        : (dspEnabled && !mobileAudioMode ? bassGain : 0);
       bassFilterRef.current.gain.setValueAtTime(
         effectiveBass,
         audioContextRef.current?.currentTime || 0,
@@ -639,13 +682,13 @@ function ShadowPlayerPage() {
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-bass", String(bassGain));
     }
-  }, [bassGain, dspEnabled, monarchMode]);
+  }, [bassGain, dspEnabled, monarchMode, mobileAudioMode]);
 
   useEffect(() => {
     if (midFilterRef.current) {
       const effectiveMid = monarchMode
-        ? Math.min(-2, dspEnabled ? midGain - 3 : -2)
-        : (dspEnabled ? midGain : 0);
+        ? Math.min(-2, dspEnabled && !mobileAudioMode ? midGain - 3 : -2)
+        : (dspEnabled && !mobileAudioMode ? midGain : 0);
       midFilterRef.current.gain.setValueAtTime(
         effectiveMid,
         audioContextRef.current?.currentTime || 0,
@@ -654,13 +697,13 @@ function ShadowPlayerPage() {
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-mid", String(midGain));
     }
-  }, [midGain, dspEnabled, monarchMode]);
+  }, [midGain, dspEnabled, monarchMode, mobileAudioMode]);
 
   useEffect(() => {
     if (trebleFilterRef.current) {
       const effectiveTreble = monarchMode
-        ? Math.max(4, dspEnabled ? trebleGain + 2 : 4)
-        : (dspEnabled ? trebleGain : 0);
+        ? Math.max(4, dspEnabled && !mobileAudioMode ? trebleGain + 2 : 4)
+        : (dspEnabled && !mobileAudioMode ? trebleGain : 0);
       trebleFilterRef.current.gain.setValueAtTime(
         effectiveTreble,
         audioContextRef.current?.currentTime || 0,
@@ -669,23 +712,38 @@ function ShadowPlayerPage() {
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-treble", String(trebleGain));
     }
-  }, [trebleGain, dspEnabled, monarchMode]);
+  }, [trebleGain, dspEnabled, monarchMode, mobileAudioMode]);
+
+  useEffect(() => {
+    if (waveShaperRef.current) {
+      const effectiveDrive = monarchMode
+        ? Math.max(overdriveGain, 5.0)
+        : (dspEnabled && !mobileAudioMode ? overdriveGain : 0);
+      waveShaperRef.current.curve = makeOverdriveCurve(effectiveDrive);
+    }
+    if (isLoadedRef.current) {
+      localStorage.setItem("slplayer-dsp-overdrive", String(overdriveGain));
+    }
+  }, [overdriveGain, dspEnabled, monarchMode, mobileAudioMode]);
 
   useEffect(() => {
     if (reverbRef.current) {
+      const isReverbActive = reverbEnabled || (dspEnabled && reverbDepth > 0);
+      const targetDepth = isReverbActive ? reverbDepth / 100 : 0;
       const wetGain = monarchMode
-        ? (dspEnabled && reverbEnabled ? 0.45 : 0.25)
-        : (dspEnabled && reverbEnabled ? 0.35 : 0.0);
+        ? Math.min(1.0, targetDepth + 0.15)
+        : targetDepth;
       reverbRef.current.gain.setValueAtTime(
-        wetGain,
+        (dspEnabled || monarchMode) && !mobileAudioMode ? wetGain : 0,
         audioContextRef.current?.currentTime || 0,
       );
     }
     if (isLoadedRef.current) {
       localStorage.setItem("slplayer-dsp-reverb", String(reverbEnabled));
+      localStorage.setItem("slplayer-dsp-reverb-depth", String(reverbDepth));
       localStorage.setItem("slplayer-dsp-enabled", String(dspEnabled));
     }
-  }, [reverbEnabled, dspEnabled, monarchMode]);
+  }, [reverbEnabled, reverbDepth, dspEnabled, monarchMode, mobileAudioMode]);
 
   useEffect(() => {
     if (isLoadedRef.current) {
@@ -751,8 +809,14 @@ function ShadowPlayerPage() {
       const storedTreble = localStorage.getItem("slplayer-dsp-treble");
       if (storedTreble) setTrebleGain(Number(storedTreble));
 
+      const storedOverdrive = localStorage.getItem("slplayer-dsp-overdrive");
+      if (storedOverdrive) setOverdriveGain(Number(storedOverdrive));
+
       const storedReverb = localStorage.getItem("slplayer-dsp-reverb");
       if (storedReverb) setReverbEnabled(storedReverb === "true");
+
+      const storedReverbDepth = localStorage.getItem("slplayer-dsp-reverb-depth");
+      if (storedReverbDepth) setReverbDepth(Number(storedReverbDepth));
 
       const storedShuffle = localStorage.getItem("slplayer-shuffle");
       if (storedShuffle) setShuffle(storedShuffle === "true");
@@ -764,6 +828,24 @@ function ShadowPlayerPage() {
     } finally {
       isLoadedRef.current = true;
     }
+  }, []);
+
+  // Guarantee Web Audio context resumes if suspended on visibility changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" || !document.hidden) {
+        if (
+          audioContextRef.current &&
+          audioContextRef.current.state === "suspended"
+        ) {
+          audioContextRef.current.resume().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   const activeGate = useMemo(
@@ -1454,7 +1536,14 @@ function ShadowPlayerPage() {
         activeGate;
       const availableTracks = currentGate.tracks;
       const len = availableTracks.length;
-      if (len === 0) return;
+      if (len === 0) {
+        const audio = audioRef.current;
+        if (audio) {
+          audio.currentTime = 0;
+          setCurrentTime(0);
+        }
+        return;
+      }
 
       if (shuffle) {
         const playable = availableTracks.filter(
@@ -1489,6 +1578,36 @@ function ShadowPlayerPage() {
           if (attempts < len) {
             prevTrack = availableTracks[prevIndex];
           }
+        } else {
+          // Fallback when activeTrack is not in currentGate (search or unassigned list)
+          const audio = audioRef.current;
+          if (audio && audio.currentTime > 3) {
+            audio.currentTime = 0;
+            setCurrentTime(0);
+            return;
+          } else if (len > 0) {
+            let prevIndex = len - 1;
+            let attempts = 0;
+            while (
+              isOffline &&
+              !isTrackAvailableOffline(availableTracks[prevIndex], cachedTrackIds) &&
+              attempts < len
+            ) {
+              prevIndex = (prevIndex - 1 + len) % len;
+              attempts++;
+            }
+            if (attempts < len) {
+              prevTrack = availableTracks[prevIndex];
+            } else {
+              prevTrack = availableTracks[0];
+            }
+          } else {
+            if (audio) {
+              audio.currentTime = 0;
+              setCurrentTime(0);
+            }
+            return;
+          }
         }
       }
     }
@@ -1498,12 +1617,19 @@ function ShadowPlayerPage() {
         const audio = audioRef.current;
         if (audio) {
           audio.currentTime = 0;
+          setCurrentTime(0);
           audio.play().catch((err) => console.warn("Prev track loop replay failed:", err));
         }
       } else {
         setActiveTrack(prevTrack);
         setPlaying(true);
         playTrackSync(prevTrack);
+      }
+    } else {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.currentTime = 0;
+        setCurrentTime(0);
       }
     }
   };
@@ -1654,20 +1780,42 @@ function ShadowPlayerPage() {
 
   // Media Session API - Register action handlers for background/OS controls
   useEffect(() => {
-    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    if (typeof window === "undefined") return;
 
-    let nativeSub: any = null;
+    let nativeSubControl: any = null;
+    let nativeSubAction: any = null;
+    let lastActionTime = 0;
+    let lastAction = "";
+
+    const handleMediaAction = ({ action }: { action: string }) => {
+      const now = Date.now();
+      if (lastAction === action && now - lastActionTime < 60) {
+        return; // debounce duplicate events from dual notification
+      }
+      lastActionTime = now;
+      lastAction = action;
+
+      if (action === "toggle_play") {
+        handlersRef.current.handleToggle();
+      } else if (action === "play") {
+        setPlaying(true);
+        audioRef.current?.play().catch(console.warn);
+      } else if (action === "pause") {
+        setPlaying(false);
+        audioRef.current?.pause();
+      } else if (action === "next") {
+        handlersRef.current.handleNext();
+      } else if (action === "prev") {
+        handlersRef.current.handlePrev();
+      }
+    };
+
     if (isNativeAndroid()) {
-      nativeSub = ShadowAudio.addListener("nativeMediaControl", ({ action }) => {
-        if (action === "toggle_play") {
-          setPlaying((prev) => !prev);
-        } else if (action === "next") {
-          handlersRef.current.handleNext();
-        } else if (action === "prev") {
-          handlersRef.current.handlePrev();
-        }
-      });
+      nativeSubControl = (ShadowAudio as any).addListener("nativeMediaControl", handleMediaAction);
+      nativeSubAction = (ShadowAudio as any).addListener("mediaAction", handleMediaAction);
     }
+
+    if (!("mediaSession" in navigator)) return;
 
     try {
       navigator.mediaSession.setActionHandler("play", () => {
@@ -1696,6 +1844,12 @@ function ShadowPlayerPage() {
     }
 
     return () => {
+      if (nativeSubControl) {
+        nativeSubControl.then((sub: any) => sub?.remove?.()).catch(() => {});
+      }
+      if (nativeSubAction) {
+        nativeSubAction.then((sub: any) => sub?.remove?.()).catch(() => {});
+      }
       if (!("mediaSession" in navigator)) return;
       const actions: any[] = [
         "play",

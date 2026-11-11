@@ -4,6 +4,30 @@ All notable changes, architectural evolutions, bug fixes, and feature releases f
 
 ---
 
+## [2.1.0] - 2026-11-11 — Hardware Media Controls & Offline Web Audio DSP
+*Major Update: Fixed earphone hardware track navigation, restored responsive lock-screen scrubber/controls, and unlocked full offline Web Audio DSP equalizer on Android.*
+
+### Completed
+- **Earphone & Headset Hardware Media Buttons**:
+  - Implemented `MediaSessionCompat.Callback` in `ShadowAudioService.java` handling `onPlay()`, `onPause()`, `onSkipToNext()`, `onSkipToPrevious()`, and `onMediaButtonEvent()`.
+  - Registered `MediaButtonReceiver` intent filters in `AndroidManifest.xml` and `ShadowAudioService`.
+  - Wired headset hook keyevent debouncing (`repeatCount == 0`) and multi-click detection (single-click toggle, double-click next, triple-click prev) in `MainActivity.java`.
+  - Added transient audio focus loss and auto-resume handling (`AUDIOFOCUS_LOSS_TRANSIENT`).
+- **Responsive Lock-Screen Playback Scrubber**:
+  - Resolved unresponsive lock-screen controls and frozen `00:00 - 00:00` seekbar by piping live `position` and track `duration` from the Web Audio player into `ShadowAudioPlugin.updatePlayback()`.
+  - Populated `MediaMetadataCompat.METADATA_KEY_DURATION` and `PlaybackStateCompat.setState()` with current playback position.
+- **Offline Monarch DSP Engine & Equalizer on Android**:
+  - Connected the Web Audio API filter pipeline on native Android so all DSP features work 100% offline without requiring Wi-Fi.
+  - Added expanded continuous sliders in `SettingsDrawer.tsx`:
+    - **Bass Boost**: `-15 dB` to `+15 dB` (peaking filter).
+    - **Vocal Mid**: `-15 dB` to `+15 dB` (peaking filter).
+    - **Treble Shine**: `-15 dB` to `+15 dB` (peaking filter).
+    - **Monarch Overdrive**: `0.0` to `10.0` warm tube saturation (WaveShaper node).
+    - **Dungeon Reverb Depth**: `0%` to `100%` space wetness control.
+  - Renamed legacy PWA mobile bypass to "Direct Audio Bypass" (defaulting to OFF) so Monarch DSP runs by default on native Android.
+
+---
+
 ## [2.0.0] - 2026-11-05 — PWA to Full Native Android Application
 *Major Milestone: Complete migration from Mobile PWA to standalone native Android application (`com.shadowplayer.app`).*
 
