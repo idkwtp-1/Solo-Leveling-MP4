@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import type { Gate, Track } from "@/lib/shadow-data";
 import { ARTIST } from "@/lib/shadow-data";
 import { Play, Trash2 } from "lucide-react";
@@ -79,16 +80,21 @@ export function TrackList({
             compact && "text-sm",
           )}
         >
-          {gate.tracks.map((t) => {
+          {gate.tracks.map((t, index) => {
             const active = t.id === activeId;
             const isTrackDisabled = isOffline && !cachedTrackIds.has(t.id);
 
             return (
-              <li key={t.id}>
+              <motion.li
+                key={t.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, delay: Math.min(index * 0.02, 0.25) }}
+              >
                 <div
                   className={cn(
                     "group w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 text-left transition-colors",
-                    active ? "bg-shadow/15" : "hover:bg-primary/5",
+                    active ? "bg-shadow/15 border-l-2 border-primary" : "hover:bg-primary/5",
                     isTrackDisabled && "opacity-25",
                   )}
                 >
@@ -97,14 +103,14 @@ export function TrackList({
                     onClick={() => !isTrackDisabled && onPlay(t)}
                     disabled={isTrackDisabled}
                     className={cn(
-                      "flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0 tap-press disabled:cursor-not-allowed disabled:pointer-events-none",
+                      "flex-1 flex items-center gap-2 sm:gap-3 text-left min-w-0 tap-press disabled:cursor-not-allowed disabled:pointer-events-none min-h-[36px]",
                     )}
                   >
                     <span
                       className={cn(
                         "font-mono text-[11px] w-5 shrink-0",
                         active
-                          ? "text-primary text-glow-blue"
+                          ? "text-primary text-glow-blue font-bold"
                           : "text-muted-foreground",
                       )}
                     >
@@ -135,7 +141,7 @@ export function TrackList({
                     <span
                       className={cn(
                         "font-mono text-[10px] shrink-0 mr-1",
-                        active ? "text-primary" : "text-muted-foreground",
+                        active ? "text-primary font-medium" : "text-muted-foreground",
                       )}
                     >
                       {t.duration}
@@ -162,7 +168,7 @@ export function TrackList({
                       <button
                         onClick={() => onUnassign(t.id)}
                         title="Unassign track"
-                        className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/30 text-red-400 font-mono text-[8px] px-1 py-0.5 h-6 rounded-xs transition-all tracking-wider"
+                        className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/30 text-red-400 font-mono text-[8px] px-2 py-1 min-h-[28px] rounded-xs transition-all tracking-wider flex items-center justify-center cursor-pointer tap-press"
                       >
                         UNBIND
                       </button>
@@ -175,15 +181,15 @@ export function TrackList({
                             setTrackToDelete(t);
                           }}
                           title="Delete track permanently"
-                          className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 p-1 h-6 w-6 flex items-center justify-center rounded-xs transition-all cursor-pointer"
+                          className="border border-red-500/40 hover:border-red-500 hover:bg-red-950/50 text-red-400 p-1 min-h-[28px] min-w-[28px] flex items-center justify-center rounded-xs transition-all cursor-pointer tap-press"
                         >
-                          <Trash2 className="w-2.5 h-2.5" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
                   )}
                 </div>
-              </li>
+              </motion.li>
             );
           })}
         </ul>

@@ -4,6 +4,36 @@ All notable changes, architectural evolutions, bug fixes, and feature releases f
 
 ---
 
+## [2.3.0] - 2026-11-12 — Runic Gate Seals, Warp Transitions, Battery Governor & Security Hardening
+*Aesthetic & Architectural Upgrade: Solo Leveling Runic Gate Seals with metallic threat badges, dimensional gate warp transitions, earphone unplugging auto-pause, canvas battery performance governor, strict YouTube API sanitization, atomic JSON persistence, and touch target ergonomics.*
+
+### Completed
+- **Proposal 1: Runic Gate Seals & Dimensional Threat Badges (`GatesGrid.tsx`)**:
+  - Implemented authentic Solo Leveling aesthetic with rank-specific mana aura borders:
+    - **S-Rank** (`GT-001`, `GT-004`): Deep purple abyssal aura (`border-purple-500/60`), metallic purple relief badge `[ S-RANK ]`, runic glyph `關`, `CRITICAL // S-CLASS` threat tag, and active `// RESONATING` indicator.
+    - **A-Rank** (`GT-002`): Electric cyan dimensional aura (`border-cyan-500/50`), metallic cyan badge `[ A-RANK ]`, runic glyph `門`, `HIGH // A-CLASS` threat tag.
+    - **B-Rank** (`GT-003`): Cobalt blue frame (`border-blue-500/40`), metallic blue badge `[ B-RANK ]`, runic glyph `界`, `MODERATE // B-CLASS` threat tag.
+    - **C-Rank** (`GT-005`): Jade emerald frame (`border-emerald-500/40`), metallic emerald badge `[ C-RANK ]`, runic glyph `域`, `SECURE // C-CLASS` threat tag.
+    - **Red Gate / Awakening** (`GT-006`): Ominous crimson red pulsing frame (`border-red-500/80`), `[ ?? ]` red alert badge, runic glyph `獄`, `ANOMALY // RED GATE` threat tag.
+  - Added four etched runic corner markers (`┌ ┐ └ ┘`) and animated light sheen sweep across the card on hover.
+  - Expanded header button touch targets (`AWAKEN GATE`, `SYSTEM SHUFFLE`) to accessible `min-h-[34px]`.
+- **Proposal 2: Dimensional Gate Warp Transitions (`index.tsx` & `TrackList.tsx`)**:
+  - Implemented smooth dimensional portal transition on entering/exiting a Gate with subtle scale expansion (`0.96 -> 1.0`), directional motion, and depth blur (`blur(6px) -> blur(0px)`).
+  - Added staggered entrance animation (`motion.li`, 20ms cascade) for track rows, creating the feeling of shadow soldiers awakening in rank order.
+- **Android Earphone Disconnect Safeguard (`ShadowAudioService.java`)**:
+  - Registered `AudioManager.ACTION_AUDIO_BECOMING_NOISY` broadcast receiver that automatically pauses playback when wired earphones are unplugged or Bluetooth disconnects, preventing accidental loudspeaker blasting.
+- **Battery & Background Performance Governor (`AnimatedBackground.tsx`)**:
+  - Integrated `visibilitychange` listener that halts `requestAnimationFrame` particle simulation whenever the phone screen is locked or the app is minimized (`document.hidden === true`), eliminating GPU/CPU waste during background audio playback.
+- **Security & Data Hardening (`backend/server.js`)**:
+  - Sanitized `/api/youtube/search` to reject leading hyphen/slash characters to prevent command-line flag injection into child processes.
+  - Added strict regex validation (`/^[a-zA-Z0-9_-]{11}$/`) for `videoId` in `/api/youtube/download`.
+  - Implemented `atomicWriteJsonSync` (writing to temporary hidden file and executing atomic rename) for `assignments.json`, `gates.json`, and `tracks_inventory.json` to prevent database corruption during sudden power loss or process kill.
+- **Touch Ergonomics & Accessibility (`TrackList.tsx` & `SettingsDrawer.tsx`)**:
+  - Enlarged `UNBIND` and `Delete` buttons to `min-h-[28px]` with comfortable tap padding.
+  - Added full ARIA accessibility attributes (`aria-label`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow`) to all equalizer, overdrive, and reverb sliders in `SettingsDrawer.tsx`.
+
+---
+
 ## [2.2.0] - 2026-11-12 — Hardware Media Navigation, Offline DSP Engine, Multi-User Audit & Hardening
 *Comprehensive Release: Hardware & Bluetooth track navigation, offline Web Audio DSP with continuous equalizer/overdrive/reverb sliders, lockscreen seekbar synchronization, live FFT audio-reactive visualizer, complete offline catalog bundling, desktop cursor fail-safe, and publication-grade improvement audit.*
 

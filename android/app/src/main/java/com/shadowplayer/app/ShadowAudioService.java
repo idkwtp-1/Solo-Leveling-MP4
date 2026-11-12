@@ -5,8 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
@@ -53,6 +55,34 @@ public class ShadowAudioService extends Service {
     private boolean isPlaying = false;
     private long currentPosition = PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN;
     private long currentDuration = 0L;
+    private boolean isNoisyReceiverRegistered = false;
+
+    private final BroadcastReceiver becomingNoisyReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                ShadowAudioPlugin.notifyAction("pause");
+            }
+        }
+    };
+
+    private void registerNoisyReceiver() {
+        if (!isNoisyReceiverRegistered) {
+            try {
+                registerReceiver(becomingNoisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+                isNoisyReceiverRegistered = true;
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void unregisterNoisyReceiver() {
+        if (isNoisyReceiverRegistered) {
+            try {
+                unregisterReceiver(becomingNoisyReceiver);
+            } catch (Exception ignored) {}
+            isNoisyReceiverRegistered = false;
+        }
+    }
 
     private static final long MEDIA_ACTIONS = PlaybackStateCompat.ACTION_PLAY
         | PlaybackStateCompat.ACTION_PAUSE
@@ -229,9 +259,11 @@ public class ShadowAudioService extends Service {
                 if (isPlaying) {
                     requestAudioFocus();
                     resumeOnFocusGain = true;
+                    registerNoisyReceiver();
                 } else {
                     abandonAudioFocus();
                     resumeOnFocusGain = false;
+                    unregisterNoisyReceiver();
                 }
                 updatePlaybackState();
                 updateMediaMetadata();
@@ -241,6 +273,7 @@ public class ShadowAudioService extends Service {
                 if (wakeLock != null && wakeLock.isHeld()) {
                     wakeLock.release();
                 }
+                unregisterNoisyReceiver();
                 resumeOnFocusGain = false;
                 abandonAudioFocus();
                 updatePlaybackState();
@@ -416,6 +449,7 @@ public class ShadowAudioService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        unregisterNoisyReceiver();
         abandonAudioFocus();
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();

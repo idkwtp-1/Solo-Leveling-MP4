@@ -828,14 +828,27 @@ export function AnimatedBackground({
         }
       }
 
-      raf = requestAnimationFrame(tick);
+      if (!document.hidden) {
+        raf = requestAnimationFrame(tick);
+      }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+      } else {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     raf = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [intensity, beatDrops, audioRef, gateId, ariseTrigger, monarchMode]);
 

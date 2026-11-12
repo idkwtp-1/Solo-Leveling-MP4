@@ -279,6 +279,10 @@ export function SettingsDrawer({
                         min="-15"
                         max="15"
                         step="1"
+                        aria-label="Bass Boost Gain"
+                        aria-valuemin={-15}
+                        aria-valuemax={15}
+                        aria-valuenow={bassGain}
                         value={bassGain}
                         onChange={(e) => setBassGain(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
@@ -306,6 +310,10 @@ export function SettingsDrawer({
                         min="-15"
                         max="15"
                         step="1"
+                        aria-label="Vocal Mid Gain"
+                        aria-valuemin={-15}
+                        aria-valuemax={15}
+                        aria-valuenow={midGain}
                         value={midGain}
                         onChange={(e) => setMidGain(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
@@ -333,6 +341,10 @@ export function SettingsDrawer({
                         min="-15"
                         max="15"
                         step="1"
+                        aria-label="Treble Shine Gain"
+                        aria-valuemin={-15}
+                        aria-valuemax={15}
+                        aria-valuenow={trebleGain}
                         value={trebleGain}
                         onChange={(e) => setTrebleGain(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
@@ -365,6 +377,10 @@ export function SettingsDrawer({
                         min="0"
                         max="10"
                         step="0.1"
+                        aria-label="Monarch Overdrive Saturation"
+                        aria-valuemin={0}
+                        aria-valuemax={10}
+                        aria-valuenow={overdriveGain}
                         value={overdriveGain}
                         onChange={(e) => setOverdriveGain?.(Number(e.target.value))}
                         className="w-full h-1 bg-border/40 rounded-lg appearance-none cursor-pointer accent-red-500 focus:outline-none"
@@ -424,6 +440,10 @@ export function SettingsDrawer({
                         min="0"
                         max="100"
                         step="1"
+                        aria-label="Dungeon Reverb Depth"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={reverbDepth}
                         disabled={!reverbEnabled}
                         value={reverbDepth}
                         onChange={(e) => setReverbDepth?.(Number(e.target.value))}

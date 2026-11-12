@@ -8,6 +8,20 @@ import { execFile, spawn, exec, execSync } from "child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+function atomicWriteJsonSync(targetPath, data) {
+  const dir = path.dirname(targetPath);
+  const tempPath = path.join(dir, `.${path.basename(targetPath)}.${Date.now()}.${Math.random().toString(36).substring(2, 8)}.tmp`);
+  try {
+    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf-8");
+    fs.renameSync(tempPath, targetPath);
+  } catch (err) {
+    if (fs.existsSync(tempPath)) {
+      try { fs.unlinkSync(tempPath); } catch (_) {}
+    }
+    fs.writeFileSync(targetPath, JSON.stringify(data, null, 2), "utf-8");
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -120,10 +134,7 @@ function loadAssignments() {
     }
   }
   try {
-    fs.writeFileSync(
-      ASSIGNMENTS_PATH,
-      JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2),
-    );
+    atomicWriteJsonSync(ASSIGNMENTS_PATH, DEFAULT_ASSIGNMENTS);
   } catch (err) {
     console.error("[SLPlayer Backend] Error writing default assignments:", err);
   }
@@ -184,7 +195,7 @@ function loadGates() {
 
 function saveGates(gates) {
   try {
-    fs.writeFileSync(GATES_PATH, JSON.stringify(gates, null, 2));
+    atomicWriteJsonSync(GATES_PATH, gates);
   } catch (err) {
     console.error("[SLPlayer Backend] Error writing gates.json:", err);
   }
@@ -235,7 +246,7 @@ app.delete("/api/gates/:gateId", (req, res) => {
   });
   if (modified) {
     try {
-      fs.writeFileSync(ASSIGNMENTS_PATH, JSON.stringify(assignments, null, 2));
+      atomicWriteJsonSync(ASSIGNMENTS_PATH, assignments);
     } catch (err) {
       console.error("[SLPlayer Backend] Failed to update assignments on gate delete:", err);
     }
@@ -280,9 +291,16 @@ try {
 
 // 1. YouTube Search
 app.get("/api/youtube/search", (req, res) => {
-  const query = req.query.q;
-  if (!query) {
-    return res.status(400).json({ error: "Missing search query" });
+  let query = req.query.q;
+  if (!query || typeof query !== "string") {
+    return res.status(400).json({ error: "Missing or invalid search query" });
+  }
+  query = query.trim();
+  if (query.length === 0 || query.length > 200) {
+    return res.status(400).json({ error: "Search query must be between 1 and 200 characters" });
+  }
+  if (/^[-/]/i.test(query)) {
+    return res.status(400).json({ error: "Search query cannot begin with command flags" });
   }
 
   execFile(
@@ -403,8 +421,8 @@ function runGitSync(title) {
 // 3. YouTube Download
 app.post("/api/youtube/download", express.json(), (req, res) => {
   const { videoId, title: requestedTitle } = req.body;
-  if (!videoId) {
-    return res.status(400).json({ error: "Missing videoId" });
+  if (!videoId || typeof videoId !== "string" || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return res.status(400).json({ error: "Missing or invalid YouTube videoId (must be exactly 11 characters)" });
   }
 
   if (activeDownloads[videoId] && activeDownloads[videoId].status !== "failed") {
@@ -565,7 +583,7 @@ app.post("/api/youtube/download", express.json(), (req, res) => {
         ...(isNaN(durSecs) ? {} : { endTime: durSecs }),
       });
       try {
-        fs.writeFileSync(INVENTORY_PATH, JSON.stringify(inventory, null, 2));
+        atomicWriteJsonSync(INVENTORY_PATH, inventory);
       } catch (e) {
         console.error("[SLPlayer Backend] Failed to write inventory:", e);
       }
@@ -625,7 +643,7 @@ app.post("/api/assignments", express.json(), (req, res) => {
     }
   }
   try {
-    fs.writeFileSync(ASSIGNMENTS_PATH, JSON.stringify(assignments, null, 2));
+    atomicWriteJsonSync(ASSIGNMENTS_PATH, assignments);
     res.json(assignments);
     runAssignmentsGitSync();
   } catch (err) {
@@ -684,7 +702,7 @@ app.delete("/api/tracks/:trackId", (req, res) => {
   // Update inventory
   inventory = inventory.filter((t) => t.id !== trackId);
   try {
-    fs.writeFileSync(INVENTORY_PATH, JSON.stringify(inventory, null, 2));
+    atomicWriteJsonSync(INVENTORY_PATH, inventory);
   } catch (err) {
     console.error("[SLPlayer Backend] Error saving inventory after delete:", err);
   }
@@ -694,7 +712,7 @@ app.delete("/api/tracks/:trackId", (req, res) => {
   if (assignments[trackId]) {
     delete assignments[trackId];
     try {
-      fs.writeFileSync(ASSIGNMENTS_PATH, JSON.stringify(assignments, null, 2));
+      atomicWriteJsonSync(ASSIGNMENTS_PATH, assignments);
     } catch (err) {
       console.error("[SLPlayer Backend] Error saving assignments after track delete:", err);
     }
