@@ -47,9 +47,6 @@ public class ShadowAudioService extends Service {
     private PowerManager.WakeLock wakeLock;
     private MediaSessionCompat mediaSession;
     private AudioManager audioManager;
-    private AudioFocusRequest audioFocusRequest;
-    private boolean hasAudioFocus = false;
-    private boolean resumeOnFocusGain = false;
     private String currentTitle = "Shadow Player // System Online";
     private String currentArtist = "Solo Leveling";
     private boolean isPlaying = false;
@@ -134,14 +131,11 @@ public class ShadowAudioService extends Service {
 
             @Override
             public void onPlay() {
-                requestAudioFocus();
-                resumeOnFocusGain = true;
                 ShadowAudioPlugin.notifyAction("play");
             }
 
             @Override
             public void onPause() {
-                resumeOnFocusGain = false;
                 ShadowAudioPlugin.notifyAction("pause");
             }
 
@@ -174,8 +168,6 @@ public class ShadowAudioService extends Service {
 
             @Override
             public void onStop() {
-                resumeOnFocusGain = false;
-                abandonAudioFocus();
                 ShadowAudioPlugin.notifyAction("pause");
             }
 
@@ -257,12 +249,8 @@ public class ShadowAudioService extends Service {
                 }
 
                 if (isPlaying) {
-                    requestAudioFocus();
-                    resumeOnFocusGain = true;
                     registerNoisyReceiver();
                 } else {
-                    abandonAudioFocus();
-                    resumeOnFocusGain = false;
                     unregisterNoisyReceiver();
                 }
                 updatePlaybackState();
@@ -274,8 +262,6 @@ public class ShadowAudioService extends Service {
                     wakeLock.release();
                 }
                 unregisterNoisyReceiver();
-                resumeOnFocusGain = false;
-                abandonAudioFocus();
                 updatePlaybackState();
                 stopForeground(true);
                 stopSelf();
@@ -319,56 +305,7 @@ public class ShadowAudioService extends Service {
         mediaSession.setMetadata(metadataBuilder.build());
     }
 
-    private final AudioManager.OnAudioFocusChangeListener focusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
-        @Override
-        public void onAudioFocusChange(int focusChange) {
-            if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
-                hasAudioFocus = false;
-                resumeOnFocusGain = false;
-                ShadowAudioPlugin.notifyAction("pause");
-            } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                ShadowAudioPlugin.notifyAction("pause");
-            } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
-                ShadowAudioPlugin.notifyAction("pause");
-            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
-                hasAudioFocus = true;
-                if (resumeOnFocusGain) {
-                    ShadowAudioPlugin.notifyAction("play");
-                }
-            }
-        }
-    };
 
-    private boolean requestAudioFocus() {
-        if (audioManager == null || hasAudioFocus) return hasAudioFocus;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            AudioAttributes playbackAttributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build();
-            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(playbackAttributes)
-                .setAcceptsDelayedFocusGain(true)
-                .setOnAudioFocusChangeListener(focusChangeListener)
-                .build();
-            hasAudioFocus = audioManager.requestAudioFocus(audioFocusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-        } else {
-            hasAudioFocus = audioManager.requestAudioFocus(focusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-        }
-        return hasAudioFocus;
-    }
-
-    private void abandonAudioFocus() {
-        if (audioManager == null || !hasAudioFocus) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (audioFocusRequest != null) {
-                audioManager.abandonAudioFocusRequest(audioFocusRequest);
-            }
-        } else {
-            audioManager.abandonAudioFocus(focusChangeListener);
-        }
-        hasAudioFocus = false;
-    }
 
     private void startForegroundServiceWithNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -450,7 +387,6 @@ public class ShadowAudioService extends Service {
     public void onDestroy() {
         super.onDestroy();
         unregisterNoisyReceiver();
-        abandonAudioFocus();
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
         }

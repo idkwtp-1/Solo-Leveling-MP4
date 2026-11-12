@@ -1,4 +1,5 @@
 import { type Gate, type Track } from "@/lib/shadow-data";
+import { isNativeAndroid } from "@/lib/storage/nativeLibrary";
 import { TrackList } from "./TrackList";
 
 type Props = {
@@ -30,7 +31,7 @@ export function SidebarQueue({
       <div className="flex gap-1 mb-4 overflow-x-auto -mx-1 px-1 pb-1">
         {gates.map((g) => {
           const hasCached = g.tracks.some((t) => cachedTrackIds.has(t.id));
-          const isGateDisabled = isOffline && !hasCached;
+          const isGateDisabled = !isNativeAndroid() && isOffline && !hasCached;
 
           return (
             <button

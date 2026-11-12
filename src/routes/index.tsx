@@ -151,6 +151,7 @@ export const isTrackAvailableOffline = (
   t: Track,
   cachedSet?: Set<string>,
 ): boolean => {
+  if (isNativeAndroid()) return true;
   if (!cachedSet || cachedSet.size === 0) return true;
   return (
     cachedSet.has(t.id) ||
@@ -189,7 +190,8 @@ function ShadowPlayerPage() {
   }, []);
 
   const isMobile = useIsMobile();
-  const [isOffline, setIsOffline] = useState(false);
+  const [rawIsOffline, setRawIsOffline] = useState(false);
+  const isOffline = isNativeAndroid() ? false : rawIsOffline;
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
   const [mobileAudioMode, setMobileAudioMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -866,12 +868,12 @@ function ShadowPlayerPage() {
       });
     }
 
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => setRawIsOffline(false);
+    const handleOffline = () => setRawIsOffline(true);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    setIsOffline(!navigator.onLine);
+    setRawIsOffline(!navigator.onLine);
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -1679,11 +1681,10 @@ function ShadowPlayerPage() {
         audioContextRef.current.resume().catch(() => {});
       }
       audio.play().catch((err) => {
-        console.warn(
-          "Audio play interrupted or resource not available offline:",
-          err,
-        );
-        setPlaying(false);
+        if (err.name !== "AbortError") {
+          console.warn("Audio play interrupted:", err);
+          setPlaying(false);
+        }
       });
     } else {
       audio.pause();
@@ -1988,6 +1989,8 @@ function ShadowPlayerPage() {
         preload="auto"
         crossOrigin="anonymous"
         src={activeTrack ? getAudioUrl(activeTrack, API_BASE) : undefined}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
         onTimeUpdate={(e) => {
           const time = e.currentTarget.currentTime;
           setCurrentTime(time);

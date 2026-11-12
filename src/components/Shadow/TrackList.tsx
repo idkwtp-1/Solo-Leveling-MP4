@@ -4,6 +4,7 @@ import type { Gate, Track } from "@/lib/shadow-data";
 import { ARTIST } from "@/lib/shadow-data";
 import { Play, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNativeAndroid } from "@/lib/storage/nativeLibrary";
 import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 import { GateSelectDropdown } from "@/components/Shadow/GateSelectDropdown";
 
@@ -82,7 +83,7 @@ export function TrackList({
         >
           {gate.tracks.map((t, index) => {
             const active = t.id === activeId;
-            const isTrackDisabled = isOffline && !cachedTrackIds.has(t.id);
+            const isTrackDisabled = !isNativeAndroid() && isOffline && !cachedTrackIds.has(t.id);
 
             return (
               <motion.li

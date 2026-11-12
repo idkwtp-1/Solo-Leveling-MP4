@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { type Gate } from "@/lib/shadow-data";
 import { cn } from "@/lib/utils";
+import { isNativeAndroid } from "@/lib/storage/nativeLibrary";
 import { Shuffle, Plus, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/Shadow/ConfirmDialog";
 
@@ -118,7 +119,7 @@ export function GatesGrid({
         {gates.map((g) => {
           const active = g.id === activeId;
           const hasCached = g.tracks.some((t) => cachedTrackIds.has(t.id));
-          const isGateDisabled = isOffline && !hasCached;
+          const isGateDisabled = !isNativeAndroid() && isOffline && !hasCached;
           const cfg = getRankConfig(g.rank);
 
           return (
