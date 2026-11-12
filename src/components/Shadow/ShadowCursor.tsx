@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Particle = {
   id: number;
@@ -222,6 +222,7 @@ function drawGateSilhouette(
 export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modeRef = useRef(mode);
+  const [nativeRestored, setNativeRestored] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -229,26 +230,80 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (mode === "default") return;
-
-    const styleEl = document.createElement("style");
-    styleEl.id = "shadow-cursor-hide-rules";
-    styleEl.innerHTML = `
-      *, *::before, *::after {
-        cursor: none !important;
+    if (mode === "default" || nativeRestored) {
+      const existing = document.getElementById("shadow-cursor-hide-rules");
+      if (existing?.parentNode) {
+        existing.parentNode.removeChild(existing);
       }
-    `;
-    document.head.appendChild(styleEl);
+      return;
+    }
 
-    return () => {
-      if (styleEl.parentNode) {
-        styleEl.parentNode.removeChild(styleEl);
+    const removeHideStyle = () => {
+      const existing = document.getElementById("shadow-cursor-hide-rules");
+      if (existing?.parentNode) {
+        existing.parentNode.removeChild(existing);
       }
     };
-  }, [mode]);
+
+    const applyHideStyle = () => {
+      if (nativeRestored) return;
+      if (!document.getElementById("shadow-cursor-hide-rules")) {
+        const styleEl = document.createElement("style");
+        styleEl.id = "shadow-cursor-hide-rules";
+        styleEl.innerHTML = `
+          *, *::before, *::after {
+            cursor: none !important;
+          }
+        `;
+        document.head.appendChild(styleEl);
+      }
+    };
+
+    applyHideStyle();
+
+    // Fail-safe 1: Escape key immediately restores native OS cursor
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        removeHideStyle();
+        setNativeRestored((prev) => !prev);
+      }
+    };
+
+    // Fail-safe 2: Window blur (alt-tab / app switch) restores native cursor
+    const handleBlur = () => {
+      removeHideStyle();
+    };
+
+    const handleFocus = () => {
+      if (!nativeRestored) {
+        applyHideStyle();
+      }
+    };
+
+    // Fail-safe 3: Global runtime error cleanup
+    const handleError = () => {
+      removeHideStyle();
+      setNativeRestored(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleError);
+
+    return () => {
+      removeHideStyle();
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleError);
+    };
+  }, [mode, nativeRestored]);
 
   useEffect(() => {
-    if (mode === "default") return;
+    if (mode === "default" || nativeRestored) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -884,7 +939,8 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
 
     let raf = 0;
     const tick = () => {
-      // Fade trail using destination-out to leave beautiful particle trails
+      try {
+        // Fade trail using destination-out to leave beautiful particle trails
       ctx.globalCompositeOperation = "destination-out";
       ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
@@ -1858,7 +1914,15 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
         ctx.restore();
       }
 
-      raf = requestAnimationFrame(tick);
+        raf = requestAnimationFrame(tick);
+      } catch (err) {
+        console.warn("ShadowCursor animation error, restoring native cursor:", err);
+        const existing = document.getElementById("shadow-cursor-hide-rules");
+        if (existing?.parentNode) {
+          existing.parentNode.removeChild(existing);
+        }
+        setNativeRestored(true);
+      }
     };
     raf = requestAnimationFrame(tick);
 
@@ -1870,9 +1934,9 @@ export function ShadowCursor({ mode = "monarch" }: { mode?: string }) {
       window.removeEventListener("mouseover", onMouseOver);
       window.removeEventListener("mousedown", onClick);
     };
-  }, [mode]);
+  }, [mode, nativeRestored]);
 
-  if (mode === "default") return null;
+  if (mode === "default" || nativeRestored) return null;
 
   return (
     <canvas

@@ -4,27 +4,78 @@ All notable changes, architectural evolutions, bug fixes, and feature releases f
 
 ---
 
+## [2.2.0] - 2026-11-12 — Hardware Media Navigation, Offline DSP Engine, Multi-User Audit & Hardening
+*Comprehensive Release: Hardware & Bluetooth track navigation, offline Web Audio DSP with continuous equalizer/overdrive/reverb sliders, lockscreen seekbar synchronization, live FFT audio-reactive visualizer, complete offline catalog bundling, desktop cursor fail-safe, and publication-grade improvement audit.*
+
+### Completed
+- **Earphone & Bluetooth Hardware Track Navigation (R1 / Milestone 1)**:
+  - Implemented `MediaSessionCompat.Callback` in `ShadowAudioService.java` handling `onPlay()`, `onPause()`, `onSkipToNext()`, `onSkipToPrevious()`, and `onMediaButtonEvent()`.
+  - Registered `MediaButtonReceiver` intent filters in `AndroidManifest.xml` and `ShadowAudioService` to route `KEYCODE_MEDIA_NEXT` and `KEYCODE_MEDIA_PREVIOUS`.
+  - Wired headset hook keyevent debouncing (`repeatCount == 0`) and multi-click detection (single-click toggle, double-click skip next, triple-click skip prev) in `MainActivity.java`.
+  - Added robust Android Audio Focus management via `AudioManager.requestAudioFocus` with `AUDIOFOCUS_LOSS_TRANSIENT` ducking and auto-resume.
+- **Lockscreen Position & Duration Seekbar Synchronization (R1 & R2)**:
+  - Resolved unresponsive lockscreen controls and frozen `00:00 - 00:00` seekbar by piping live `position` and track `duration` from the Web Audio player into `ShadowAudioPlugin.updatePlayback()`.
+  - Populated `MediaMetadataCompat.METADATA_KEY_DURATION` and `PlaybackStateCompat.setState(PLAYING, positionMs, 1.0f)` with live playback position, enabling smooth OS scrubber interpolation.
+  - Implemented `onSeekTo(long pos)` callback in `ShadowAudioService.java` and `ShadowAudioPlugin.notifySeek()` communicating lockscreen scrub events back to the React player.
+- **Offline Monarch Web Audio DSP Engine & Manual Equalizer (R2 / Milestone 2)**:
+  - Unblocked Web Audio API initialization on native Android by decoupling `initAudioContext()` from `mobileAudioMode`.
+  - Implemented hyperbolic tangent (`tanh`) soft-saturation `WaveShaperNode` with `oversample = "2x"` inserted into the audio chain for genuine warm tube overdrive distortion.
+  - Added continuous manual sliders in `SettingsDrawer.tsx`:
+    - **Bass Boost**: `-15 dB` to `+15 dB` peaking filter.
+    - **Vocal Mid**: `-15 dB` to `+15 dB` peaking filter.
+    - **Treble Shine**: `-15 dB` to `+15 dB` peaking filter.
+    - **Monarch Overdrive**: `0.0` to `10.0` continuous distortion gain with real-time saturation curve generation.
+    - **Dungeon Reverb Depth**: `0%` to `100%` continuous wet space depth slider.
+  - Retained full Monarch holographic HUD offline on native Android (`!isNativeAndroid()`) and added settings button to `OfflinePlayer.tsx` for offline PWA mode.
+  - Ensured Web Audio context auto-resumes on playback gestures, track changes, and `visibilitychange` events.
+- **PortalVisualizer Live Web Audio FFT Audio Reactivity (R3 / Milestone 3)**:
+  - Replaced synthetic trigonometric sine/cosine math in `PortalVisualizer.tsx` with live Web Audio frequency data sampled via `(window as any).audioAnalyser.getByteFrequencyData()`.
+  - Mapped 128 frequency bins symmetrically across 96 circular rune spikes from sub-bass to high treble.
+  - Connected sub-bass bins (1..8) to dynamic inner ring pulsing, with amplitude boosted in Monarch Mode (`ampFactor = 1.85`) and an idle breathing pulse when paused.
+- **Standalone Offline Catalog Bundling (R3 / Milestone 3)**:
+  - Bundled all 68 tracks from `backend/media/tracks_inventory.json` directly into `NEW_UNASSIGNED_TRACKS` in `src/lib/shadow-data.ts`.
+  - Guarantees 100% offline track catalog availability out-of-the-box without requiring an active backend connection.
+- **Desktop Custom Cursor Fail-Safe & Recovery (R3 / Milestone 3)**:
+  - Added multi-layered cursor recovery handlers in `src/components/Shadow/ShadowCursor.tsx`.
+  - Added `Escape` key listener that immediately toggles and strips the global `cursor: none !important;` style tag.
+  - Added window `blur` and `focus` event listeners to restore the OS cursor when Alt-Tabbing or switching applications.
+  - Added `error` and `unhandledrejection` listeners and wrapped the animation loop in `try/catch` to ensure the OS mouse pointer is never trapped.
+- **Publication-Grade Improvement Audit (`IMPROVEMENT_AUDIT.md`) (R3 / Milestone 3)**:
+  - Released comprehensive audit adhering to the *Universal Project Improvement Audit Prompt* and *Project Enhancement Guide*.
+  - Scored 10 core dimensions (current vs target), simulated 4 user personas (Tariq, Marcus, Elena, Kenji) across 7 critical flows.
+  - Formulated Top 9 Quick Wins (QW-1 to QW-9) and Top 6 Bigger Investments (BI-1 to BI-6).
+  - Designed distinctive Solo Leveling aesthetic & feature proposals: Runic Gate Seals, "ARISE" Shadow Extraction gate assignment animation, and Shadow Soldier DSP Sound Profiles (Igris, Iron, Beru, Tank, Monarch).
+- **Desktop & PyWebView Non-Regression (R4 / Milestone 4)**:
+  - Verified `run_pywebview.py` syntax, WinForms/WPF window controls, AppUserModelID, and Node.js Express server process lifecycle management.
+  - Confirmed Express static asset server serving `dist/client/index.html` and bundled media assets with HTTP 200 responses.
+  - Clean build verified: `npm run build` (exit code 0), `npx cap sync android` (exit code 0), `gradlew.bat assembleDebug` (`BUILD SUCCESSFUL in 17s`, 190.99 MB APK).
+
+---
+
 ## [2.1.0] - 2026-11-11 — Hardware Media Controls & Offline Web Audio DSP
 *Major Update: Fixed earphone hardware track navigation, restored responsive lock-screen scrubber/controls, and unlocked full offline Web Audio DSP equalizer on Android.*
 
 ### Completed
-- **Earphone & Headset Hardware Media Buttons**:
+- **Earphone & Headset Hardware Media Buttons (R1 / Milestone 1)**:
   - Implemented `MediaSessionCompat.Callback` in `ShadowAudioService.java` handling `onPlay()`, `onPause()`, `onSkipToNext()`, `onSkipToPrevious()`, and `onMediaButtonEvent()`.
   - Registered `MediaButtonReceiver` intent filters in `AndroidManifest.xml` and `ShadowAudioService`.
   - Wired headset hook keyevent debouncing (`repeatCount == 0`) and multi-click detection (single-click toggle, double-click next, triple-click prev) in `MainActivity.java`.
   - Added transient audio focus loss and auto-resume handling (`AUDIOFOCUS_LOSS_TRANSIENT`).
-- **Responsive Lock-Screen Playback Scrubber**:
+- **Responsive Lock-Screen Playback Scrubber & Duration (R1 & R2)**:
   - Resolved unresponsive lock-screen controls and frozen `00:00 - 00:00` seekbar by piping live `position` and track `duration` from the Web Audio player into `ShadowAudioPlugin.updatePlayback()`.
-  - Populated `MediaMetadataCompat.METADATA_KEY_DURATION` and `PlaybackStateCompat.setState()` with current playback position.
-- **Offline Monarch DSP Engine & Equalizer on Android**:
-  - Connected the Web Audio API filter pipeline on native Android so all DSP features work 100% offline without requiring Wi-Fi.
+  - Populated `MediaMetadataCompat.METADATA_KEY_DURATION` and `PlaybackStateCompat.setState(PLAYING, positionMs, 1.0f)` with current playback position.
+  - Implemented `onSeekTo(long pos)` callback in `ShadowAudioService.java` communicating scrub events back to WebView.
+- **Offline Monarch DSP Engine & Equalizer on Android (R2 / Milestone 2)**:
+  - Unblocked Web Audio API initialization on native Android by decoupling `initAudioContext()` from `mobileAudioMode`.
+  - Implemented hyperbolic tangent (`tanh`) soft-saturation `WaveShaperNode` for genuine non-linear warm tube overdrive distortion.
   - Added expanded continuous sliders in `SettingsDrawer.tsx`:
     - **Bass Boost**: `-15 dB` to `+15 dB` (peaking filter).
     - **Vocal Mid**: `-15 dB` to `+15 dB` (peaking filter).
     - **Treble Shine**: `-15 dB` to `+15 dB` (peaking filter).
-    - **Monarch Overdrive**: `0.0` to `10.0` warm tube saturation (WaveShaper node).
-    - **Dungeon Reverb Depth**: `0%` to `100%` space wetness control.
-  - Renamed legacy PWA mobile bypass to "Direct Audio Bypass" (defaulting to OFF) so Monarch DSP runs by default on native Android.
+    - **Monarch Overdrive**: `0.0` to `10.0` continuous slider with numeric readout and Solo Leveling aesthetic.
+    - **Dungeon Reverb Depth**: `0%` to `100%` continuous wet space depth slider.
+  - Retained full Monarch holographic HUD offline on native Android (`!isNativeAndroid()`) and added settings button to `OfflinePlayer.tsx` for offline PWA mode.
+  - Ensured Web Audio context auto-resumes on playback gestures, track changes, and `visibilitychange` events.
 
 ---
 

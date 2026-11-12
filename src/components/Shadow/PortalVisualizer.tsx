@@ -15,51 +15,91 @@ export function PortalVisualizer({ active, size = 320, monarchMode = false }: Pr
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!active) {
-      const g = spikesRef.current;
-      if (g) {
-        const children = g.children;
-        for (let i = 0; i < children.length; i++) {
-          const line = children[i] as SVGLineElement;
-          line.setAttribute("y2", String(-100));
-        }
-        g.setAttribute("transform", "rotate(0)");
-      }
-      if (ringRef.current) {
-        ringRef.current.setAttribute("r", "78");
-      }
-      return;
-    }
-
     let t = 0;
+    const freqData = new Uint8Array(128);
+
     const tick = () => {
-      t += 0.06;
+      t += 0.05;
       const g = spikesRef.current;
+      const ring = ringRef.current;
+
+      const analyser =
+        typeof window !== "undefined"
+          ? (window as any).audioAnalyser
+          : null;
+
+      let hasLiveAudio = false;
+      if (active && analyser && typeof analyser.getByteFrequencyData === "function") {
+        analyser.getByteFrequencyData(freqData);
+        // Detect whether audio signal has audible energy
+        for (let b = 0; b < 24; b++) {
+          if (freqData[b] > 5) {
+            hasLiveAudio = true;
+            break;
+          }
+        }
+      }
+
       if (g) {
         const children = g.children;
+        const ampFactor = monarchMode ? 1.85 : 1.0;
+
         for (let i = 0; i < children.length; i++) {
           const line = children[i] as SVGLineElement;
           const phase = (i / SPIKES) * Math.PI * 2;
-          const ampFactor = monarchMode ? 1.85 : 1.0;
-          const amp =
-            28 * ampFactor *
-            (0.5 +
-              0.5 *
-                Math.sin(phase * 3 + t * 1.7) *
-                Math.cos(phase * 2 - t * 0.9));
-          const len = 14 + Math.abs(amp);
-          line.setAttribute("y2", String(-len));
+
+          if (active && hasLiveAudio) {
+            // Symmetrical frequency mapping across 96 spikes: low bass to high treble
+            const binIndex =
+              i < 48
+                ? Math.floor((i / 48) * 72)
+                : Math.floor(((96 - i) / 48) * 72);
+            const rawVal = freqData[binIndex] || 0;
+            const normVal = rawVal / 255;
+            const dynamicAmp = normVal * 36 * ampFactor;
+            const flutter = 2 + 2 * Math.sin(phase * 3 + t * 2.2);
+            const spikeY2 = -(98 + dynamicAmp + flutter);
+            line.setAttribute("y2", String(spikeY2));
+          } else {
+            // Subtle breathing idle pulse when paused or silent
+            const idleAmp =
+              4.5 * (0.5 + 0.5 * Math.sin(phase * 2 + t * 1.5) * Math.cos(phase - t * 0.9));
+            const idleY2 = -(98 + idleAmp);
+            line.setAttribute("y2", String(idleY2));
+          }
         }
-        const rotSpeed = monarchMode ? 28 : 18;
+
+        const rotSpeed = active
+          ? monarchMode
+            ? 28
+            : 18
+          : monarchMode
+            ? 7
+            : 4;
         g.setAttribute("transform", `rotate(${(t * rotSpeed) % 360})`);
       }
-      if (ringRef.current) {
-        const pulseStrength = monarchMode ? 0.08 : 0.04;
-        const pulse = 1 + Math.sin(t * 2) * pulseStrength;
-        ringRef.current.setAttribute("r", String(78 * pulse));
+
+      if (ring) {
+        if (active && hasLiveAudio) {
+          // Dynamic ring pulse reacting to sub-bass bins (1..8)
+          let bassSum = 0;
+          for (let b = 1; b <= 8; b++) {
+            bassSum += freqData[b] || 0;
+          }
+          const bassEnergy = bassSum / 8 / 255;
+          const bassPulseStrength = monarchMode ? 0.16 : 0.08;
+          const pulse = 1 + bassEnergy * bassPulseStrength + Math.sin(t * 2) * 0.02;
+          ring.setAttribute("r", String(78 * pulse));
+        } else {
+          // Gentle idle breathing ring
+          const idlePulse = 1 + Math.sin(t * 1.6) * (monarchMode ? 0.04 : 0.025);
+          ring.setAttribute("r", String(78 * idlePulse));
+        }
       }
+
       rafRef.current = requestAnimationFrame(tick);
     };
+
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, [active, monarchMode]);

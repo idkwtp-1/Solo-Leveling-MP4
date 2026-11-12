@@ -1291,14 +1291,12 @@ function ShadowPlayerPage() {
       audio.load();
     }
 
-    if (!mobileAudioMode) {
-      initAudioContext();
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state === "suspended"
-      ) {
-        audioContextRef.current.resume();
-      }
+    initAudioContext();
+    if (
+      audioContextRef.current &&
+      audioContextRef.current.state === "suspended"
+    ) {
+      audioContextRef.current.resume().catch(() => {});
     }
 
     audio.play().catch((err) => {
@@ -1368,14 +1366,12 @@ function ShadowPlayerPage() {
     const audio = audioRef.current;
     if (audio) {
       if (nextPlaying) {
-        if (!mobileAudioMode) {
-          initAudioContext();
-          if (
-            audioContextRef.current &&
-            audioContextRef.current.state === "suspended"
-          ) {
-            audioContextRef.current.resume();
-          }
+        initAudioContext();
+        if (
+          audioContextRef.current &&
+          audioContextRef.current.state === "suspended"
+        ) {
+          audioContextRef.current.resume().catch(() => {});
         }
         audio.play().catch((err) => console.warn(err));
       } else {
@@ -1638,11 +1634,28 @@ function ShadowPlayerPage() {
     setIsPlayerOpen(false);
   };
 
+  const syncNativePlayback = (isPlay: boolean, posSeconds?: number) => {
+    if (!isNativeAndroid() || !activeTrack) return;
+    const currentPos =
+      posSeconds !== undefined
+        ? posSeconds
+        : audioRef.current?.currentTime || currentTime || 0;
+    const trackDur = duration || audioRef.current?.duration || 0;
+    ShadowAudio.updatePlayback({
+      title: activeTrack.title,
+      artist: "Solo Leveling // System Online",
+      isPlaying: isPlay,
+      position: Math.round(currentPos * 1000),
+      duration: Math.round(trackDur * 1000),
+    }).catch(() => {});
+  };
+
   const handleSeek = (time: number) => {
     const audio = audioRef.current;
     if (audio && isFinite(time) && time >= 0) {
       audio.currentTime = time;
       setCurrentTime(time);
+      syncNativePlayback(playing, time);
     }
   };
 
@@ -1652,14 +1665,12 @@ function ShadowPlayerPage() {
     if (!audio) return;
 
     if (playing && activeTrack) {
-      if (!mobileAudioMode) {
-        initAudioContext();
-        if (
-          audioContextRef.current &&
-          audioContextRef.current.state === "suspended"
-        ) {
-          audioContextRef.current.resume();
-        }
+      initAudioContext();
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state === "suspended"
+      ) {
+        audioContextRef.current.resume().catch(() => {});
       }
       audio.play().catch((err) => {
         console.warn(
@@ -1671,7 +1682,7 @@ function ShadowPlayerPage() {
     } else {
       audio.pause();
     }
-  }, [playing, activeTrack, mobileAudioMode]);
+  }, [playing, activeTrack]);
 
   // Keyboard shortcuts (Space/ESC) - desktop only
   useEffect(() => {
@@ -1743,16 +1754,12 @@ function ShadowPlayerPage() {
 
     if (isNativeAndroid()) {
       if (activeTrack) {
-        ShadowAudio.updatePlayback({
-          title: activeTrack.title,
-          artist: "Solo Leveling // System Online",
-          isPlaying: playing,
-        }).catch(() => {});
+        syncNativePlayback(playing);
       } else {
         ShadowAudio.stopPlayback().catch(() => {});
       }
     }
-  }, [playing, activeTrack]);
+  }, [playing, activeTrack, duration]);
 
   // Media Session API - Sync position state (timers/scrub progress)
   useEffect(() => {
@@ -1787,26 +1794,28 @@ function ShadowPlayerPage() {
     let lastActionTime = 0;
     let lastAction = "";
 
-    const handleMediaAction = ({ action }: { action: string }) => {
+    const handleMediaAction = (data: { action: string; position?: number }) => {
       const now = Date.now();
-      if (lastAction === action && now - lastActionTime < 60) {
+      if (lastAction === data.action && now - lastActionTime < 60) {
         return; // debounce duplicate events from dual notification
       }
       lastActionTime = now;
-      lastAction = action;
+      lastAction = data.action;
 
-      if (action === "toggle_play") {
+      if (data.action === "toggle_play") {
         handlersRef.current.handleToggle();
-      } else if (action === "play") {
+      } else if (data.action === "play") {
         setPlaying(true);
         audioRef.current?.play().catch(console.warn);
-      } else if (action === "pause") {
+      } else if (data.action === "pause") {
         setPlaying(false);
         audioRef.current?.pause();
-      } else if (action === "next") {
+      } else if (data.action === "next") {
         handlersRef.current.handleNext();
-      } else if (action === "prev") {
+      } else if (data.action === "prev") {
         handlersRef.current.handlePrev();
+      } else if (data.action === "seek" && data.position !== undefined) {
+        handleSeek(data.position / 1000);
       }
     };
 
@@ -1879,8 +1888,8 @@ function ShadowPlayerPage() {
     );
   }, [activeTrack, gates, activeGate, globalShuffleActive]);
 
-  // ─── Offline mode: render simple flat player ───
-  if (isOffline && hasMounted) {
+  // ─── Offline mode: render simple flat player only for Web PWA, NOT native Android! ───
+  if (isOffline && hasMounted && !isNativeAndroid()) {
     return (
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
         {/* Audio element (shared) */}
@@ -1931,6 +1940,34 @@ function ShadowPlayerPage() {
               prev === "none" ? "all" : prev === "all" ? "one" : "none",
             )
           }
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+        <SettingsDrawer
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          cursorMode={cursorMode}
+          setCursorMode={setCursorMode}
+          bgIntensity={bgIntensity}
+          setBgIntensity={setBgIntensity}
+          dspEnabled={dspEnabled}
+          setDspEnabled={setDspEnabled}
+          bassGain={bassGain}
+          setBassGain={setBassGain}
+          midGain={midGain}
+          setMidGain={setMidGain}
+          trebleGain={trebleGain}
+          setTrebleGain={setTrebleGain}
+          overdriveGain={overdriveGain}
+          setOverdriveGain={setOverdriveGain}
+          reverbEnabled={reverbEnabled}
+          setReverbEnabled={setReverbEnabled}
+          reverbDepth={reverbDepth}
+          setReverbDepth={setReverbDepth}
+          normalizationEnabled={normalizationEnabled}
+          setNormalizationEnabled={setNormalizationEnabled}
+          mobileAudioMode={mobileAudioMode}
+          setMobileAudioMode={handleSetMobileAudioMode}
+          isMobile={isMobile}
         />
       </div>
     );
@@ -2241,8 +2278,12 @@ function ShadowPlayerPage() {
             setMidGain={setMidGain}
             trebleGain={trebleGain}
             setTrebleGain={setTrebleGain}
+            overdriveGain={overdriveGain}
+            setOverdriveGain={setOverdriveGain}
             reverbEnabled={reverbEnabled}
             setReverbEnabled={setReverbEnabled}
+            reverbDepth={reverbDepth}
+            setReverbDepth={setReverbDepth}
             normalizationEnabled={normalizationEnabled}
             setNormalizationEnabled={setNormalizationEnabled}
             mobileAudioMode={mobileAudioMode}
