@@ -504,6 +504,7 @@ function ShadowPlayerPage() {
 
   useEffect(() => {
     if (!isLocalApp) return;
+    if (isNativeAndroid() && !isSearchOpen) return;
 
     const prevDownloads: Record<string, import("@/components/Shadow/YouTubeSearchDrawer").DownloadStatus> = {};
 
@@ -1640,7 +1641,12 @@ function ShadowPlayerPage() {
       posSeconds !== undefined
         ? posSeconds
         : audioRef.current?.currentTime || currentTime || 0;
-    const trackDur = duration || audioRef.current?.duration || 0;
+    const trackDur =
+      activeTrack.endTime ||
+      duration ||
+      (audioRef.current && isFinite(audioRef.current.duration)
+        ? audioRef.current.duration
+        : 0);
     ShadowAudio.updatePlayback({
       title: activeTrack.title,
       artist: "Solo Leveling // System Online",
@@ -1981,13 +1987,7 @@ function ShadowPlayerPage() {
         playsInline
         preload="auto"
         crossOrigin="anonymous"
-        src={
-          activeTrack
-            ? import.meta.env.PROD
-              ? `${import.meta.env.BASE_URL}media/${activeTrack.filename || `${activeTrack.id}.mp3`}`
-              : `${API_BASE}/api/stream/${encodeURIComponent(activeTrack.id)}`
-            : undefined
-        }
+        src={activeTrack ? getAudioUrl(activeTrack, API_BASE) : undefined}
         onTimeUpdate={(e) => {
           const time = e.currentTarget.currentTime;
           setCurrentTime(time);
